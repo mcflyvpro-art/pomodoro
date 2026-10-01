@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pomodoro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --base:#24112B; --field:#F4B740; --ink:#FBF3E4;
+  --num:"Big Shoulders Display","Arial Narrow",Impact,sans-serif;
+  --ui:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --ease:cubic-bezier(.65,0,.35,1);
+}
+body[data-phase=short]{--base:#0E2B26;--field:#A8DEC0}
+body[data-phase=long]{--base:#151B3D;--field:#B4C2FF}
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden}
+body{background:var(--base);color:var(--ink);font:15px/1.45 var(--ui);transition:background .6s var(--ease)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--field);outline-offset:3px;border-radius:6px}
+
+/* ---------- Le cadran plein écran : deux calques identiques, l'un découpé ---------- */
+.layer{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:background .6s var(--ease),color .6s var(--ease)}
+#below{background:var(--base);color:var(--field)}
+#above{background:var(--field);color:var(--base);clip-path:inset(0 0 0 0);will-change:clip-path}
+#above.anim{transition:clip-path .9s var(--ease),background .6s var(--ease),color .6s var(--ease)}
+.digits{font:800 min(44vh,33vw)/.82 var(--num);display:flex;letter-spacing:0;user-select:none}
+.digits span{display:inline-block;width:.52em;text-align:center}
+.digits span.sep{width:.24em}
+.digits.hours{font-size:min(36vh,22vw)}
+.caption{margin-top:3.2vh;font:500 clamp(15px,1.5vw,20px)/1 var(--ui);opacity:.85;min-height:1em}
+
+/* ---------- Chrome ---------- */
+.chrome{position:fixed;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+  padding:22px 28px;pointer-events:none;transition:opacity .5s ease}
+.chrome > *{pointer-events:auto}
+#top{top:0}
+#bottom{bottom:0;justify-content:center}
+body.idle .chrome{opacity:0}
+body.idle{cursor:none}
+
+.pill{background:color-mix(in srgb,var(--base) 88%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-radius:999px;padding:5px;display:flex;align-items:center;gap:2px;box-shadow:0 8px 30px -12px rgb(0 0 0/.45);
+  transition:background .6s var(--ease)}
+
+.phases button{padding:8px 16px;border-radius:999px;color:color-mix(in srgb,var(--ink) 62%,transparent);font-weight:500;transition:color .2s,background .2s}
+.phases button:hover{color:var(--ink)}
+.phases button[aria-pressed=true]{background:var(--field);color:var(--base)}
+
+.dots{padding:12px 16px;gap:8px}
+.dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--field);transition:background .4s}
+.dots i.on{background:var(--field)}
+.dots b{font-weight:500;margin-left:6px;color:color-mix(in srgb,var(--ink) 70%,transparent);font-size:13px}
+
+.controls{padding:6px;gap:6px}
+.icon{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;color:var(--ink);transition:background .2s}
+.icon:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
+.icon svg{width:20px;height:20px}
+#toggle{height:46px;min-width:150px;padding:0 26px;border-radius:999px;background:var(--field);color:var(--base);font-weight:600;font-size:16px;
+  transition:transform .15s,background .6s var(--ease),color .6s var(--ease)}
+#toggle:hover{transform:scale(1.03)}
+#toggle:active{transform:scale(.97)}
+.divider{width:1px;height:24px;background:color-mix(in srgb,var(--ink) 18%,transparent);margin:0 4px}
+
+/* ---------- Réglages : tiroir latéral ---------- */
+#scrim{position:fixed;inset:0;z-index:8;background:rgb(0 0 0/.35);opacity:0;pointer-events:none;transition:opacity .3s}
+#drawer{position:fixed;top:12px;right:12px;bottom:12px;width:min(380px,calc(100vw - 24px));z-index:9;
+  background:color-mix(in srgb,var(--base) 94%,#fff);border-radius:22px;padding:28px 26px;overflow:auto;
+  transform:translateX(calc(100% + 24px));transition:transform .45s var(--ease),background .6s var(--ease);
+  box-shadow:0 30px 80px -20px rgb(0 0 0/.6)}
+body.open #drawer{transform:none}
+body.open #scrim{opacity:1;pointer-events:auto}
+#drawer h2{font:800 34px/1 var(--num);margin:0 0 22px;color:var(--field);letter-spacing:.5px}
+#drawer h3{font-size:13px;font-weight:600;margin:26px 0 10px;color:color-mix(in srgb,var(--ink) 60%,transparent)}
+.close{position:absolute;top:20px;right:18px}
+.presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.presets button{padding:12px 6px;border-radius:14px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;transition:background .2s}
+.presets button:hover{background:color-mix(in srgb,var(--ink) 13%,transparent)}
+.presets button.on{background:var(--field);color:var(--base)}
+.presets strong{display:block;font:800 22px/1 var(--num)}
+.presets small{font-size:12px;opacity:.75}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 9%,transparent)}
+.row:last-child{border-bottom:0}
+.stepper{display:flex;align-items:center;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:12px}
+.stepper button{width:34px;height:36px;font-size:18px;color:color-mix(in srgb,var(--ink) 75%,transparent);border-radius:12px}
+.stepper button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
+.stepper input{width:54px;text-align:center;background:none;border:0;font-weight:600;-moz-appearance:textfield;appearance:textfield}
+.stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.switch{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:99px;background:color-mix(in srgb,var(--ink) 18%,transparent);position:relative;cursor:pointer;transition:background .2s;margin:0}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--ink);transition:transform .2s var(--ease)}
+.switch:checked{background:var(--field)}
+.switch:checked::after{transform:translateX(18px);background:var(--base)}
+input[type=range]{width:150px;accent-color:var(--field)}
+.test{margin-top:14px;width:100%;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--ink) 7%,transparent);font-weight:500}
+.test:hover{background:color-mix(in srgb,var(--ink) 13%,transparent)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px;color:color-mix(in srgb,var(--ink) 75%,transparent)}
+kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);justify-self:start}
+.note{font-size:13px;color:color-mix(in srgb,var(--ink) 55%,transparent);margin-top:18px}
+
+@media (max-width:640px){
+  .chrome{padding:14px}
+  #top{flex-direction:column;gap:10px}
+  .phases button{padding:7px 11px;font-size:14px}
+  #toggle{min-width:120px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0s!important}
+}
+</style>
+</head>
+<body data-phase="work">
+
+<div id="below" class="layer" aria-hidden="true"></div>
+<div id="above" class="layer" aria-hidden="true"></div>
+<template id="face"><div class="digits"></div><div class="caption"></div></template>
+<div id="sr" role="timer" aria-live="off" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></div>
+
+<header id="top" class="chrome">
+  <nav class="pill phases" aria-label="Phase">
+    <button data-p="work">Focus</button>
+    <button data-p="short">Pause courte</button>
+    <button data-p="long">Pause longue</button>
+  </nav>
+  <div class="pill dots" id="dots" title="Sessions de Focus terminées dans ce cycle"></div>
+</header>
+
+<footer id="bottom" class="chrome">
+  <div class="pill controls">
+    <button class="icon" id="reset" title="Recommencer la phase (R)" aria-label="Recommencer la phase">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+    <button id="toggle">Démarrer</button>
+    <button class="icon" id="skip" title="Passer à la suite (S)" aria-label="Passer à la suite">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5v13a1 1 0 0 0 1.5.86l10-6.5a1 1 0 0 0 0-1.72l-10-6.5A1 1 0 0 0 5 5.5Z"/><rect x="17.5" y="5" width="2.2" height="14" rx="1.1"/></svg>
+    </button>
+    <span class="divider"></span>
+    <button class="icon" id="fs" title="Plein écran (F)" aria-label="Plein écran">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="icon" id="openSettings" title="Réglages" aria-label="Réglages" aria-controls="drawer" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </div>
+</footer>
+
+<div id="scrim"></div>
+<aside id="drawer" aria-label="Réglages" inert>
+  <button class="icon close" id="closeSettings" aria-label="Fermer les réglages">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+  </button>
+  <h2>Réglages</h2>
+
+  <h3>Formules rapides</h3>
+  <div class="presets">
+    <button data-preset="25,5,15"><strong>25 / 5</strong><small>Classique</small></button>
+    <button data-preset="50,10,20"><strong>50 / 10</strong><small>Long</small></button>
+    <button data-preset="90,20,30"><strong>90 / 20</strong><small>Deep work</small></button>
+  </div>
+
+  <h3>Durées (minutes)</h3>
+  <div class="row"><label for="work">Focus</label><div class="stepper"><button data-step="work,-1" aria-label="Moins">−</button><input id="work" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="work,1" aria-label="Plus">+</button></div></div>
+  <div class="row"><label for="short">Pause courte</label><div class="stepper"><button data-step="short,-1" aria-label="Moins">−</button><input id="short" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="short,1" aria-label="Plus">+</button></div></div>
+  <div class="row"><label for="long">Pause longue</label><div class="stepper"><button data-step="long,-1" aria-label="Moins">−</button><input id="long" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="long,1" aria-label="Plus">+</button></div></div>
+  <div class="row"><label for="every">Pause longue après</label><div class="stepper"><button data-step="every,-1" aria-label="Moins">−</button><input id="every" type="number" min="1" max="20" step="1" inputmode="numeric"><button data-step="every,1" aria-label="Plus">+</button></div></div>
+
+  <h3>Déroulement et son</h3>
+  <div class="row"><label for="auto">Enchaîner les phases</label><input id="auto" class="switch" type="checkbox"></div>
+  <div class="row"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="100"></div>
+  <button class="test" id="test">Écouter la sonnerie</button>
+
+  <h3>Raccourcis</h3>
+  <div class="keys">
+    <kbd>Espace</kbd><span>Démarrer ou mettre en pause</span>
+    <kbd>R</kbd><span>Recommencer la phase</span>
+    <kbd>S</kbd><span>Passer à la suite</span>
+    <kbd>F</kbd><span>Plein écran</span>
+    <kbd>Échap</kbd><span>Fermer les réglages</span>
+  </div>
+  <p class="note">Une durée modifiée pendant un décompte s'applique à la phase suivante. <button id="resetCycle" style="text-decoration:underline;color:inherit;padding:0">Remettre le cycle à zéro</button></p>
+</aside>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const DEF = {work:25, short:5, long:15, every:4, auto:true, vol:70};
+const LABEL = {work:'Focus', short:'Pause courte', long:'Pause longue'};
+const LIMITS = {work:[0.1,600], short:[0.1,600], long:[0.1,600], every:[1,20]};
+
+const num = (v, min, max, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d; };
+const sanitize = c => ({
+  work: num(c.work, 0.1, 600, DEF.work),
+  short: num(c.short, 0.1, 600, DEF.short),
+  long: num(c.long, 0.1, 600, DEF.long),
+  every: Math.round(num(c.every, 1, 20, DEF.every)),
+  auto: typeof c.auto === 'boolean' ? c.auto : DEF.auto,
+  vol: Math.round(num(c.vol, 0, 100, DEF.vol)),
+});
+const load = () => { try { return sanitize(JSON.parse(localStorage.getItem('pomodoro') || '{}') || {}); } catch { return sanitize({}); } };
+const save = () => { try { localStorage.setItem('pomodoro', JSON.stringify(cfg)); } catch {} };
+
+let cfg = load();
+let animT = 0;
+let phase = 'work', done = 0, total = 0, left = 0, endAt = 0, running = false, timer = 0;
+const dur = p => Math.round(cfg[p] * 60000);
+
+/* ---------- Cadran : deux calques identiques ---------- */
+const tpl = $('face');
+['below', 'above'].forEach(id => $(id).appendChild(tpl.content.cloneNode(true)));
+const digitEls = document.querySelectorAll('.digits');
+const captionEls = document.querySelectorAll('.caption');
+
+/* ---------- Son (Web Audio, programmé à l'avance : précis même onglet en arrière-plan) ---------- */
+let ctx = null, master = null, chime = null;
+function audio() {
+  if (!ctx) {
+    const A = window.AudioContext || window.webkitAudioContext;
+    if (!A) return null;
+    ctx = new A();
+    master = ctx.createGain();
+    master.connect(ctx.destination);
+    setVol();
+  }
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  return ctx;
+}
+function setVol() { if (master) master.gain.value = (cfg.vol / 100) ** 2; }
+function makeChime(delaySec) {
+  const c = audio(); if (!c) return null;
+  const at = c.currentTime + Math.max(0.05, delaySec);
+  const out = c.createGain(); out.connect(master);
+  const oscs = [];
+  const notes = [880, 1108.73, 1318.51];
+  for (let r = 0; r < 3; r++) notes.forEach((f, i) => {
+    const t = at + r * 1.1 + i * 0.16;
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.3, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    o.connect(g); g.connect(out);
+    o.start(t); o.stop(t + 0.95);
+    oscs.push(o);
+  });
+  return {at, out, oscs};
+}
+function cancelChime() {
+  if (!chime) return;
+  chime.oscs.forEach(o => { try { o.stop(); } catch {} });
+  try { chime.out.disconnect(); } catch {}
+  chime = null;
+}
+
+/* ---------- Notifications (optionnelles) ---------- */
+function askNotif() {
+  try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch?.(() => {}); } catch {}
+}
+function notify(msg) {
+  try { if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification('Pomodoro', {body: msg}); } catch {}
+}
+
+/* ---------- Minuteur (basé sur l'heure de fin : aucune dérive) ---------- */
+const nextPhase = d => phase === 'work' ? (d > 0 && d % cfg.every === 0 ? 'long' : 'short') : 'work';
+
+function setPhase(p) {
+  running = false; clearTimeout(timer); cancelChime();
+  phase = p; total = dur(p); left = total;
+  document.body.dataset.phase = p;
+  if (lastFrac > 0.001) { // le niveau remonte en douceur, puis suit le temps en direct
+    $('above').classList.add('anim');
+    clearTimeout(animT); animT = setTimeout(() => $('above').classList.remove('anim'), 950);
+  }
+  render(true);
+}
+function start() {
+  if (running || left <= 0) return;
+  audio(); askNotif();
+  running = true;
+  endAt = Date.now() + left;
+  cancelChime(); chime = makeChime(left / 1000);
+  clearTimeout(timer); timer = setTimeout(check, left + 30);
+  render(true); armIdle();
+}
+function pause() {
+  if (!running) return;
+  left = Math.max(0, endAt - Date.now());
+  running = false; clearTimeout(timer); cancelChime();
+  render(true); wake();
+}
+function check() {
+  if (!running) return;
+  const rem = endAt - Date.now();
+  if (rem <= 0) finish();
+  else { clearTimeout(timer); timer = setTimeout(check, rem + 30); }
+}
+function finish() {
+  if (!running) return;
+  running = false; clearTimeout(timer);
+  // Si le son programmé n'a pas pu jouer (contexte audio suspendu…), on le joue maintenant.
+  if (!chime || !ctx || ctx.state !== 'running' || ctx.currentTime < chime.at - 0.3) { cancelChime(); makeChime(0); }
+  chime = null; // laisse sonner, ne sera pas annulé par la phase suivante
+  if (phase === 'work') done++;
+  const np = nextPhase(done);
+  notify(phase === 'work' ? `Session terminée. Place à : ${LABEL[np]}` : 'Pause terminée, on reprend.');
+  setPhase(np);
+  wake();
+  if (cfg.auto) start();
+}
+function skip() { setPhase(nextPhase(phase === 'work' ? done + 1 : done)); wake(); }
+function reset() { setPhase(phase); wake(); }
+function toggle() { running ? pause() : start(); }
+
+/* ---------- Affichage ---------- */
+const pad = n => String(n).padStart(2, '0');
+const clock = t => new Date(t).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+let lastTxt = '', lastCap = '', lastFrac = -1;
+function render(force) {
+  const rem = running ? Math.max(0, endAt - Date.now()) : left;
+  const s = Math.ceil(rem / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+  const txt = h ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(Math.floor(s / 60))}:${pad(sec)}`;
+  if (txt !== lastTxt) {
+    const html = [...txt].map(ch => ch === ':' ? '<span class="sep">:</span>' : `<span>${ch}</span>`).join('');
+    digitEls.forEach(el => { el.innerHTML = html; el.classList.toggle('hours', h > 0); });
+    $('sr').textContent = txt;
+    lastTxt = txt;
+  }
+  const cap = running ? `${LABEL[phase]} · fin à ${clock(endAt)}`
+    : left < total ? `${LABEL[phase]} en pause` : `${LABEL[phase]} · ${formatDur(total)}`;
+  if (cap !== lastCap) { captionEls.forEach(el => el.textContent = cap); lastCap = cap; }
+
+  const frac = total ? 1 - rem / total : 0; // part écoulée → le niveau descend
+  if (force || Math.abs(frac - lastFrac) > 0.0002) {
+    $('above').style.clipPath = `inset(${(frac * 100).toFixed(3)}% 0 0 0)`;
+    lastFrac = frac;
+  }
+  if (!force) return;
+  $('toggle').textContent = running ? 'Pause' : (left < total ? 'Reprendre' : 'Démarrer');
+  document.querySelectorAll('.phases button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === phase));
+  renderDots();
+  document.title = (running || left < total) ? `${txt} · ${LABEL[phase]}` : 'Pomodoro';
+}
+function formatDur(ms) {
+  const min = ms / 60000;
+  if (min >= 60) { const h = Math.floor(min / 60), r = Math.round(min % 60); return r ? `${h} h ${r}` : `${h} h`; }
+  return Number.isInteger(min) ? `${min} min` : `${Math.round(ms / 1000)} s`;
+}
+function renderDots() {
+  const filled = (phase === 'long' && done > 0 && done % cfg.every === 0) ? cfg.every : done % cfg.every;
+  let html = '';
+  for (let i = 0; i < cfg.every; i++) html += `<i class="${i < filled ? 'on' : ''}"></i>`;
+  html += `<b>${done} terminée${done > 1 ? 's' : ''}</b>`;
+  $('dots').innerHTML = html;
+}
+
+// Rendu fluide quand l'onglet est visible ; contrôle de fin même en arrière-plan.
+function frame() {
+  if (running) {
+    if (endAt - Date.now() <= 0) finish();
+    else { render(false); if (document.title !== `${lastTxt} · ${LABEL[phase]}`) document.title = `${lastTxt} · ${LABEL[phase]}`; }
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+setInterval(() => {
+  if (!running) return;
+  if (endAt - Date.now() <= 0) finish();
+  else if (document.hidden) { render(false); document.title = `${lastTxt} · ${LABEL[phase]}`; }
+}, 500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { check(); render(true); } });
+
+/* ---------- Mode concentration : l'interface s'efface quand la souris ne bouge plus ---------- */
+let idleT = 0;
+function wake() { document.body.classList.remove('idle'); armIdle(); }
+function armIdle() {
+  clearTimeout(idleT);
+  idleT = setTimeout(() => {
+    if (running && !document.body.classList.contains('open') && !document.querySelector('.chrome:hover')) document.body.classList.add('idle');
+  }, 3000);
+}
+['mousemove', 'mousedown', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, {passive:true}));
+
+/* ---------- Réglages ---------- */
+function fillInputs() {
+  for (const k of ['work', 'short', 'long', 'every']) $(k).value = +cfg[k].toFixed(2);
+  $('auto').checked = cfg.auto; $('vol').value = cfg.vol;
+  document.querySelectorAll('[data-preset]').forEach(b => {
+    const [w, s, l] = b.dataset.preset.split(',').map(Number);
+    b.classList.toggle('on', cfg.work === w && cfg.short === s && cfg.long === l);
+  });
+}
+function applyCfg(next) {
+  cfg = sanitize(next);
+  save(); fillInputs(); setVol();
+  // Phase non entamée : on applique tout de suite. Sinon : à la phase suivante.
+  if (!running && left === total) setPhase(phase); else render(true);
+}
+const readInputs = () => applyCfg({work: $('work').value, short: $('short').value, long: $('long').value,
+  every: $('every').value, auto: $('auto').checked, vol: $('vol').value});
+['work', 'short', 'long', 'every', 'auto'].forEach(k => $(k).addEventListener('change', readInputs));
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
+  const [k, d] = b.dataset.step.split(','); const [min, max] = LIMITS[k];
+  const cur = Number($(k).value) || cfg[k];
+  const v = Math.min(max, Math.max(min, (d > 0 ? Math.floor(cur) : Math.ceil(cur)) + Number(d)));
+  applyCfg({...cfg, [k]: v});
+}));
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
+  const [work, short, long] = b.dataset.preset.split(',').map(Number);
+  applyCfg({...cfg, work, short, long});
+}));
+$('vol').addEventListener('input', () => { cfg.vol = Math.round(num($('vol').value, 0, 100, DEF.vol)); setVol(); save(); });
+$('test').addEventListener('click', () => makeChime(0));
+$('resetCycle').addEventListener('click', () => { done = 0; setPhase('work'); });
+
+function openSettings(open) {
+  document.body.classList.toggle('open', open);
+  $('drawer').inert = !open;
+  $('openSettings').setAttribute('aria-expanded', open);
+  if (open) { wake(); setTimeout(() => $('closeSettings').focus(), 50); }
+  else $('openSettings').focus();
+}
+$('openSettings').addEventListener('click', () => openSettings(true));
+$('closeSettings').addEventListener('click', () => openSettings(false));
+$('scrim').addEventListener('click', () => openSettings(false));
+
+/* ---------- Contrôles ---------- */
+function toggleFs() {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  } catch {}
+}
+$('toggle').addEventListener('click', toggle);
+$('reset').addEventListener('click', reset);
+$('skip').addEventListener('click', skip);
+$('fs').addEventListener('click', toggleFs);
+document.querySelectorAll('.phases button').forEach(b => b.addEventListener('click', () => { setPhase(b.dataset.p); wake(); }));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.body.classList.contains('open')) { openSettings(false); return; }
+  wake();
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.body.classList.contains('open')) return;
+  if (e.target.closest('input,textarea,select')) return;
+  // Espace = démarrer/pause partout, même si un bouton a le focus après un clic.
+  if (e.code === 'Space') { e.preventDefault(); toggle(); return; }
+  const k = e.key.toLowerCase();
+  if (k === 'r') reset();
+  else if (k === 's') skip();
+  else if (k === 'f') toggleFs();
+});
+document.addEventListener('keyup', e => { if (e.code === 'Space' && e.target.closest('button') && !document.body.classList.contains('open')) e.preventDefault(); });
+window.addEventListener('beforeunload', e => { if (running) { e.preventDefault(); e.returnValue = ''; } });
+
+fillInputs();
+setPhase('work');
+})();
+</script>
+</body>
+</html>
