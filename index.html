@@ -24,9 +24,10 @@
   --ease:cubic-bezier(.65,0,.35,1);
   --st:env(safe-area-inset-top,0px); --sb:env(safe-area-inset-bottom,0px);
   --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px);
+  --muted:color-mix(in srgb,var(--ink) 62%,transparent);
+  --tint:color-mix(in srgb,var(--ink) 7%,transparent);
+  --tint2:color-mix(in srgb,var(--ink) 13%,transparent);
 }
-body[data-phase=short]{--base:#0E2B26;--field:#A8DEC0}
-body[data-phase=long]{--base:#151B3D;--field:#B4C2FF}
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 [hidden]{display:none!important}
@@ -60,6 +61,7 @@ button{cursor:pointer;border:0;background:none;padding:0}
 .digits.hours{font-size:min(calc(var(--vh,1vh)*36),22vw)}
 .grp{display:flex}
 .digits i{font-style:normal;display:inline-block;width:.52em;text-align:center}
+.digits i.pl{width:.42em}
 .sep{width:.24em;text-align:center}
 .caption{margin-top:calc(var(--vh,1vh)*3.2);font:500 clamp(15px,1.5vw,20px)/1.2 var(--ui);opacity:.85;min-height:1.2em;text-align:center;padding:0 24px}
 
@@ -77,7 +79,7 @@ body.idle{cursor:none}
   border-radius:999px;padding:5px;display:flex;align-items:center;gap:2px;box-shadow:0 10px 30px -12px rgb(0 0 0/.5);
   transition:background .6s var(--ease)}
 
-.phases button{padding:9px 16px;border-radius:999px;color:color-mix(in srgb,var(--ink) 62%,transparent);font-weight:500;white-space:nowrap;transition:color .2s,background .3s}
+.phases button{padding:9px 16px;border-radius:999px;color:var(--muted);font-weight:500;white-space:nowrap;transition:color .2s,background .3s}
 .phases button[aria-pressed=true]{background:var(--field);color:var(--base)}
 
 .dots{padding:12px 16px;gap:8px}
@@ -89,6 +91,8 @@ body.idle{cursor:none}
 .icon{width:46px;height:46px;flex:none;border-radius:50%;display:grid;place-items:center;color:var(--ink);transition:background .2s,transform .15s}
 .icon:active{transform:scale(.92)}
 .icon svg{width:20px;height:20px}
+#sound{color:var(--field);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
 #toggle{height:46px;min-width:150px;padding:0 26px;border-radius:999px;background:var(--field);color:var(--base);font-weight:600;font-size:16px;
   transition:transform .15s,background .6s var(--ease),color .6s var(--ease)}
 #toggle:active{transform:scale(.96)}
@@ -97,24 +101,37 @@ body.idle{cursor:none}
 /* ---------- Réglages : tiroir latéral (PC) / feuille du bas (mobile) ---------- */
 #scrim{position:absolute;inset:0;z-index:8;background:rgb(0 0 0/.4);opacity:0;pointer-events:none;transition:opacity .3s}
 #drawer{position:absolute;top:12px;right:12px;bottom:12px;width:min(380px,calc(100vw - 24px));z-index:9;
-  background:color-mix(in srgb,var(--base) 94%,#fff);border-radius:22px;padding:28px 26px;overflow:auto;overscroll-behavior:contain;
+  background:color-mix(in srgb,var(--base) 94%,#fff);border-radius:22px;padding:24px 22px 26px;overflow:auto;overscroll-behavior:contain;
   transform:translateX(calc(100% + 24px));transition:transform .45s var(--ease),background .6s var(--ease);
   box-shadow:0 30px 80px -20px rgb(0 0 0/.6)}
 body.open #drawer{transform:none}
 body.open #scrim{opacity:1;pointer-events:auto}
 .grabber{display:none}
-#drawer h2{font:800 34px/1 var(--num);margin:0 0 22px;color:var(--field);letter-spacing:.5px}
-#drawer h3{font-size:13px;font-weight:600;margin:26px 0 10px;color:color-mix(in srgb,var(--ink) 60%,transparent)}
-.close{position:absolute;top:20px;right:18px}
+#drawer h2{font:800 32px/1 var(--num);margin:0 0 18px;color:var(--field);letter-spacing:.5px}
+.close{position:absolute;top:16px;right:14px}
+.stabs{display:flex;gap:4px;padding:4px;border-radius:16px;background:var(--tint);margin-bottom:20px}
+.stabs button{flex:1;height:42px;border-radius:12px;display:grid;place-items:center;color:var(--muted);transition:background .25s,color .25s}
+.stabs button svg{width:20px;height:20px}
+.stabs button[aria-selected=true]{background:var(--field);color:var(--base)}
+.panel{animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}}
+.sub{font-size:13px;font-weight:600;margin:20px 0 10px;color:color-mix(in srgb,var(--ink) 55%,transparent)}
+.panel > .sub:first-child{margin-top:0}
+
 .presets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.presets button{padding:12px 6px;border-radius:14px;background:color-mix(in srgb,var(--ink) 7%,transparent);text-align:center;transition:background .2s,transform .15s}
-.presets button:active{transform:scale(.97)}
-.presets button.on{background:var(--field);color:var(--base)}
-.presets strong{display:block;font:800 22px/1 var(--num)}
-.presets small{font-size:12px;opacity:.75}
+.pwrap{position:relative;display:grid}
+.preset{padding:12px 6px;border-radius:14px;background:var(--tint);text-align:center;transition:background .2s,transform .15s}
+.preset:active{transform:scale(.97)}
+.preset.on{background:var(--field);color:var(--base)}
+.preset strong{display:block;font:800 22px/1 var(--num)}
+.preset small{font-size:12px;opacity:.7}
+.preset.add{border:1.5px dashed color-mix(in srgb,var(--ink) 25%,transparent);background:none}
+.del{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--base);color:var(--ink);
+  font-size:14px;line-height:1;display:grid;place-items:center;box-shadow:0 0 0 1.5px color-mix(in srgb,var(--ink) 25%,transparent);opacity:.85}
+
 .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid color-mix(in srgb,var(--ink) 9%,transparent)}
-.row:last-of-type{border-bottom:0}
-.stepper{display:flex;align-items:center;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:12px}
+.row:last-child{border-bottom:0}
+.stepper{display:flex;align-items:center;background:var(--tint);border-radius:12px}
 .stepper button{width:38px;height:38px;font-size:19px;color:color-mix(in srgb,var(--ink) 75%,transparent);border-radius:12px}
 .stepper input{width:56px;text-align:center;background:none;border:0;font-weight:600;font-size:16px;-moz-appearance:textfield;appearance:textfield;-webkit-user-select:text;user-select:text}
 .stepper input::-webkit-inner-spin-button,.stepper input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
@@ -123,12 +140,20 @@ body.open #scrim{opacity:1;pointer-events:auto}
 .switch:checked{background:var(--field)}
 .switch:checked::after{transform:translateX(18px);background:var(--base)}
 input[type=range]{width:150px;accent-color:var(--field)}
-.btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;background:color-mix(in srgb,var(--ink) 7%,transparent);font-weight:500;transition:background .2s}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:8px 13px;border-radius:999px;background:var(--tint);font-size:14px;font-weight:500;transition:background .2s,color .2s}
+.chip.on{background:var(--field);color:var(--base)}
+
+.swatches{display:flex;flex-wrap:wrap;gap:12px}
+.swatch{width:44px;height:44px;border-radius:50%;box-shadow:inset 0 0 0 1px rgb(255 255 255/.12);transition:transform .15s}
+.swatch.on{box-shadow:0 0 0 3px color-mix(in srgb,var(--base) 94%,#fff),0 0 0 5px var(--ink)}
+.swatch:active{transform:scale(.93)}
+
+.btn{margin-top:14px;width:100%;padding:13px;border-radius:14px;background:var(--tint);font-weight:500;transition:background .2s}
 .btn.primary{background:var(--field);color:var(--base);font-weight:600}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px;color:color-mix(in srgb,var(--ink) 75%,transparent)}
 kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color-mix(in srgb,var(--ink) 10%,transparent);color:var(--ink);justify-self:start}
-.note{font-size:13px;color:color-mix(in srgb,var(--ink) 55%,transparent);margin-top:18px}
-.note button{text-decoration:underline;color:inherit}
 .ios{font-size:14px;color:color-mix(in srgb,var(--ink) 75%,transparent);margin:0}
 .ios svg{width:16px;height:16px;vertical-align:-3px}
 
@@ -137,9 +162,13 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   .phases button:hover{color:var(--ink)}
   .icon:hover{background:color-mix(in srgb,var(--ink) 12%,transparent)}
   #toggle:hover{transform:scale(1.03)}
-  .presets button:hover{background:color-mix(in srgb,var(--ink) 13%,transparent)}
+  .preset:hover,.chip:hover,.btn:hover{background:var(--tint2)}
+  .preset.on:hover,.chip.on:hover{background:var(--field)}
   .stepper button:hover{color:var(--ink);background:color-mix(in srgb,var(--ink) 8%,transparent)}
-  .btn:hover{background:color-mix(in srgb,var(--ink) 13%,transparent)}
+  .stabs button:hover{color:var(--ink)}
+  .stabs button[aria-selected=true]:hover{color:var(--base)}
+  .del{opacity:0;transition:opacity .2s}
+  .pwrap:hover .del{opacity:1}
 }
 
 /* ---------- Mobile portrait ---------- */
@@ -156,10 +185,10 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   .divider{display:none}
 
   #drawer{top:auto;left:0;right:0;bottom:0;width:100%;max-height:calc(var(--vh,1vh)*88);border-radius:26px 26px 0 0;
-    padding:8px 20px calc(var(--sb) + 26px);transform:translateY(105%)}
-  .grabber{display:block;width:40px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--ink) 25%,transparent);margin:2px auto 16px}
-  .close{top:18px;right:12px}
-  #drawer h2{font-size:30px;margin-bottom:12px}
+    padding:8px 18px calc(var(--sb) + 24px);transform:translateY(105%)}
+  .grabber{display:block;width:40px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--ink) 25%,transparent);margin:2px auto 14px}
+  .close{top:16px;right:10px}
+  #drawer h2{font-size:28px;margin-bottom:14px}
 }
 @media (max-aspect-ratio:4/5){
   .digits{flex-direction:column;font-size:min(84vw,calc(var(--vh,1vh)*28));line-height:.86}
@@ -178,12 +207,11 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   #drawer{top:8px;bottom:8px}
 }
 @media (prefers-reduced-motion:reduce){
-  *,*::before,*::after{transition-duration:0s!important}
+  *,*::before,*::after{transition-duration:0s!important;animation-duration:0s!important}
 }
 </style>
 </head>
-<body data-phase="work">
-
+<body>
 <div id="app">
 <div id="below" class="layer" aria-hidden="true"></div>
 <div id="above" class="layer" aria-hidden="true"></div>
@@ -196,7 +224,7 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
     <button data-p="short">Pause courte</button>
     <button data-p="long">Pause longue</button>
   </nav>
-  <div class="pill dots" id="dots" title="Sessions de Focus terminées dans ce cycle"></div>
+  <div class="pill dots" id="dots" title="Sessions de Focus terminées aujourd'hui"></div>
 </header>
 
 <footer id="bottom" class="chrome">
@@ -209,6 +237,12 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 5.5v13a1 1 0 0 0 1.5.86l10-6.5a1 1 0 0 0 0-1.72l-10-6.5A1 1 0 0 0 5 5.5Z"/><rect x="17.5" y="5" width="2.2" height="14" rx="1.1"/></svg>
     </button>
     <span class="divider"></span>
+    <button class="icon" id="sound" title="Activer le son" aria-label="Activer le son" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>
+    </button>
+    <button class="icon" id="pip" title="Mini-fenêtre (P)" aria-label="Mini-fenêtre flottante" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="6" height="5" rx="1" fill="currentColor"/></svg>
+    </button>
     <button class="icon" id="fs" title="Plein écran (F)" aria-label="Plein écran">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
@@ -224,46 +258,87 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   <button class="icon close" id="closeSettings" aria-label="Fermer les réglages">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
   </button>
-  <h2>Réglages</h2>
+  <h2 id="stitle">Minuteur</h2>
 
-  <h3>Formules rapides</h3>
-  <div class="presets">
-    <button data-preset="25,5,15"><strong>25 / 5</strong><small>Classique</small></button>
-    <button data-preset="50,10,20"><strong>50 / 10</strong><small>Long</small></button>
-    <button data-preset="90,20,30"><strong>90 / 20</strong><small>Deep work</small></button>
-  </div>
+  <nav class="stabs" role="tablist" aria-label="Sections des réglages">
+    <button role="tab" data-tab="timer" title="Minuteur" aria-label="Minuteur" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>
+    </button>
+    <button role="tab" data-tab="sound" title="Son" aria-label="Son" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+    </button>
+    <button role="tab" data-tab="pause" title="Pause" aria-label="Pause" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.5 19 2c1 2 2 4.2 2 8 0 5.5-4.8 10-10 10Z"/><path d="M2 21c0-3 1.9-5.4 5.2-6"/></svg>
+    </button>
+    <button role="tab" data-tab="look" title="Affichage" aria-label="Affichage" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r="1.3" fill="currentColor"/><circle cx="17.5" cy="10.5" r="1.3" fill="currentColor"/><circle cx="8.5" cy="7.5" r="1.3" fill="currentColor"/><circle cx="6.5" cy="12.5" r="1.3" fill="currentColor"/><path d="M12 2a10 10 0 0 0 0 20c.9 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7h2a5.6 5.6 0 0 0 5.6-5.6C22 6 17.5 2 12 2Z"/></svg>
+    </button>
+    <button role="tab" data-tab="device" title="Appareil" aria-label="Appareil" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg>
+    </button>
+  </nav>
 
-  <h3>Durées (minutes)</h3>
-  <div class="row"><label for="work">Focus</label><div class="stepper"><button data-step="work,-1" aria-label="Moins">−</button><input id="work" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="work,1" aria-label="Plus">+</button></div></div>
-  <div class="row"><label for="short">Pause courte</label><div class="stepper"><button data-step="short,-1" aria-label="Moins">−</button><input id="short" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="short,1" aria-label="Plus">+</button></div></div>
-  <div class="row"><label for="long">Pause longue</label><div class="stepper"><button data-step="long,-1" aria-label="Moins">−</button><input id="long" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="long,1" aria-label="Plus">+</button></div></div>
-  <div class="row"><label for="every">Pause longue après</label><div class="stepper"><button data-step="every,-1" aria-label="Moins">−</button><input id="every" type="number" min="1" max="20" step="1" inputmode="numeric"><button data-step="every,1" aria-label="Plus">+</button></div></div>
+  <section class="panel" data-panel="timer">
+    <div class="presets" id="presets"></div>
+    <div class="sub">Durées (minutes)</div>
+    <div class="row"><label for="work">Focus</label><div class="stepper"><button data-step="work,-1" aria-label="Moins">−</button><input id="work" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="work,1" aria-label="Plus">+</button></div></div>
+    <div class="row"><label for="short">Pause courte</label><div class="stepper"><button data-step="short,-1" aria-label="Moins">−</button><input id="short" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="short,1" aria-label="Plus">+</button></div></div>
+    <div class="row"><label for="long">Pause longue</label><div class="stepper"><button data-step="long,-1" aria-label="Moins">−</button><input id="long" type="number" min="0.1" max="600" step="any" inputmode="decimal"><button data-step="long,1" aria-label="Plus">+</button></div></div>
+    <div class="row"><label for="every">Pause longue après</label><div class="stepper"><button data-step="every,-1" aria-label="Moins">−</button><input id="every" type="number" min="1" max="20" step="1" inputmode="numeric"><button data-step="every,1" aria-label="Plus">+</button></div></div>
+    <div class="sub">Déroulement</div>
+    <div class="row"><label for="auto">Enchaîner les phases</label><input id="auto" data-k="auto" class="switch" type="checkbox"></div>
+    <div class="row"><label for="flow">Mode flow</label><input id="flow" data-k="flow" class="switch" type="checkbox"></div>
+    <div class="row"><label for="remind">Rappel après 2 min</label><input id="remind" data-k="remind" class="switch" type="checkbox"></div>
+  </section>
 
-  <h3>Déroulement et son</h3>
-  <div class="row"><label for="auto">Enchaîner les phases</label><input id="auto" class="switch" type="checkbox"></div>
-  <div class="row" id="awakeRow"><label for="awake">Garder l'écran allumé</label><input id="awake" class="switch" type="checkbox"></div>
-  <div class="row"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="100"></div>
-  <button class="btn" id="test">Écouter la sonnerie</button>
+  <section class="panel" data-panel="sound" hidden>
+    <div class="sub">Fin du Focus</div>
+    <div class="chips" id="sndWork" data-chip="sndWork"></div>
+    <div class="sub">Fin de pause</div>
+    <div class="chips" id="sndBreak" data-chip="sndBreak"></div>
+    <div class="sub">Ambiance pendant le Focus</div>
+    <div class="chips" id="ambient" data-chip="ambient"></div>
+    <div class="sub"></div>
+    <div class="row"><label for="sndStart">Son au démarrage</label><input id="sndStart" data-k="sndStart" class="switch" type="checkbox"></div>
+    <div class="row"><label for="vol">Volume</label><input id="vol" type="range" min="0" max="100"></div>
+    <div class="row" id="ambVolRow"><label for="ambVol">Volume ambiance</label><input id="ambVol" type="range" min="0" max="100"></div>
+  </section>
 
-  <div id="installBlock" hidden>
-    <h3>Application</h3>
-    <button class="btn primary" id="installBtn" hidden>Installer l'app</button>
-    <p class="ios" id="iosHint" hidden>Pour l'installer : touche
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Partager"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg>
-      Partager, puis « Sur l'écran d'accueil ».</p>
-  </div>
+  <section class="panel" data-panel="pause" hidden>
+    <div class="row"><label for="breathe">Respiration guidée</label><input id="breathe" data-k="breathe" class="switch" type="checkbox"></div>
+    <div class="row"><label for="tips">Conseils de pause</label><input id="tips" data-k="tips" class="switch" type="checkbox"></div>
+  </section>
 
-  <div class="keys-block">
-    <h3>Raccourcis</h3>
-    <div class="keys">
-      <kbd>Espace</kbd><span>Démarrer ou mettre en pause</span>
-      <kbd>R</kbd><span>Recommencer la phase</span>
-      <kbd>S</kbd><span>Passer à la suite</span>
-      <kbd>F</kbd><span>Plein écran</span>
-      <kbd>Échap</kbd><span>Fermer les réglages</span>
+  <section class="panel" data-panel="look" hidden>
+    <div class="swatches" id="palettes"></div>
+    <div class="sub"></div>
+    <div class="row"><label for="hideSec">Masquer les secondes</label><input id="hideSec" data-k="hideSec" class="switch" type="checkbox"></div>
+    <div class="row"><label for="wave">Vague de fin</label><input id="wave" data-k="wave" class="switch" type="checkbox"></div>
+    <div class="row"><label for="favProg">Progression dans l'onglet</label><input id="favProg" data-k="favProg" class="switch" type="checkbox"></div>
+  </section>
+
+  <section class="panel" data-panel="device" hidden>
+    <div class="row" id="awakeRow"><label for="awake">Écran allumé</label><input id="awake" data-k="awake" class="switch" type="checkbox"></div>
+    <div class="row" id="pushRow"><label for="push">Alerte écran verrouillé</label><input id="push" class="switch" type="checkbox"></div>
+    <div class="row" id="mediaRow"><label for="media">Contrôles écran verrouillé</label><input id="media" data-k="media" class="switch" type="checkbox"></div>
+    <div id="installBlock" hidden>
+      <button class="btn primary" id="installBtn" hidden>Installer l'app</button>
+      <p class="ios" id="iosHint" hidden>Installer : touche
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Partager"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5v10h14V11h-1"/></svg>
+        puis « Sur l'écran d'accueil ».</p>
     </div>
-  </div>
-  <p class="note">Une durée modifiée pendant un décompte s'applique à la phase suivante. <button id="resetCycle">Remettre le cycle à zéro</button></p>
+    <div class="keys-block">
+      <div class="sub">Raccourcis</div>
+      <div class="keys">
+        <kbd>Espace</kbd><span>Démarrer ou mettre en pause</span>
+        <kbd>R</kbd><span>Recommencer la phase</span>
+        <kbd>S</kbd><span>Passer à la suite</span>
+        <kbd>F</kbd><span>Plein écran</span>
+        <kbd>P</kbd><span>Mini-fenêtre</span>
+      </div>
+    </div>
+    <button class="btn" id="resetCycle">Remettre le compteur à zéro</button>
+  </section>
 </aside>
 </div>
 
@@ -271,41 +346,84 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
-const DEF = {work:25, short:5, long:15, every:4, auto:true, awake:true, vol:70};
+const PUSH_URL = 'https://aevgolkxerwxrnpduxzk.supabase.co/functions/v1/pomodoro-push';
 const LABEL = {work:'Focus', short:'Pause courte', long:'Pause longue'};
-const LIMITS = {work:[0.1,600], short:[0.1,600], long:[0.1,600], every:[1,20]};
+const PALETTES = {
+  safran: {work:['#24112B', '#F4B740'], short:['#0E2B26', '#A8DEC0'], long:['#151B3D', '#B4C2FF']},
+  corail: {work:['#2B1210', '#FF8A6B'], short:['#0F2A2B', '#7FD6D1'], long:['#1E1530', '#D6B4FF']},
+  foret:  {work:['#15261A', '#D9E86A'], short:['#10242E', '#8FD3F0'], long:['#2A1A12', '#F2B48C']},
+  rose:   {work:['#2E1020', '#FF9EC4'], short:['#13202E', '#9EC8FF'], long:['#1E2A12', '#C8EE8A']},
+  craie:  {work:['#1C1C1E', '#F2EFE9'], short:['#1C1C1E', '#CFE8DC'], long:['#1C1C1E', '#D9DDF2']},
+  nuit:   {work:['#000000', '#9A7426'], short:['#000000', '#3F8F6E'], long:['#000000', '#5468A8']},
+};
+const PALETTE_LABEL = {safran:'Safran', corail:'Corail', foret:'Forêt', rose:'Rose', craie:'Craie', nuit:'Nuit'};
+const SOUND_LABEL = {cloche:'Cloche', gong:'Gong', bol:'Bol', bip:'Bip', oiseaux:'Oiseaux'};
+const AMB_LABEL = {none:'Aucune', white:'Blanc', pink:'Rose', brown:'Brun', rain:'Pluie', tick:'Tic-tac'};
+const TIPS = ['Étire-toi', "Bois un verre d'eau", 'Regarde au loin 20 secondes', 'Lève-toi et marche un peu',
+  'Détends tes épaules', 'Ferme les yeux un instant', 'Respire profondément'];
+const BUILTIN = [[25, 5, 15, 'Classique'], [50, 10, 20, 'Long'], [90, 20, 30, 'Deep work']];
+const DEF = {work:25, short:5, long:15, every:4, auto:true, flow:false, remind:true,
+  sndWork:'cloche', sndBreak:'bol', sndStart:false, vol:70, ambient:'none', ambVol:50,
+  breathe:true, tips:true, palette:'safran', hideSec:false, wave:true, favProg:true,
+  awake:true, push:false, media:true, presets:[]};
+const LIMITS = {work:[0.1, 600], short:[0.1, 600], long:[0.1, 600], every:[1, 20]};
 const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const mobile = matchMedia('(max-width:640px)');
-
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
 const num = (v, min, max, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d; };
 const bool = (v, d) => typeof v === 'boolean' ? v : d;
+const oneOf = (v, list, d) => list.includes(v) ? v : d;
 const sanitize = c => ({
   work: num(c.work, 0.1, 600, DEF.work),
   short: num(c.short, 0.1, 600, DEF.short),
   long: num(c.long, 0.1, 600, DEF.long),
   every: Math.round(num(c.every, 1, 20, DEF.every)),
-  auto: bool(c.auto, DEF.auto),
-  awake: bool(c.awake, DEF.awake),
+  auto: bool(c.auto, DEF.auto), flow: bool(c.flow, DEF.flow), remind: bool(c.remind, DEF.remind),
+  sndWork: oneOf(c.sndWork, Object.keys(SOUND_LABEL), DEF.sndWork),
+  sndBreak: oneOf(c.sndBreak, Object.keys(SOUND_LABEL), DEF.sndBreak),
+  sndStart: bool(c.sndStart, DEF.sndStart),
   vol: Math.round(num(c.vol, 0, 100, DEF.vol)),
+  ambient: oneOf(c.ambient, Object.keys(AMB_LABEL), DEF.ambient),
+  ambVol: Math.round(num(c.ambVol, 0, 100, DEF.ambVol)),
+  breathe: bool(c.breathe, DEF.breathe), tips: bool(c.tips, DEF.tips),
+  palette: oneOf(c.palette, Object.keys(PALETTES), DEF.palette),
+  hideSec: bool(c.hideSec, DEF.hideSec), wave: bool(c.wave, DEF.wave), favProg: bool(c.favProg, DEF.favProg),
+  awake: bool(c.awake, DEF.awake), push: bool(c.push, DEF.push), media: bool(c.media, DEF.media),
+  presets: (Array.isArray(c.presets) ? c.presets : []).filter(p => Array.isArray(p) && p.length === 4).slice(0, 6)
+    .map(p => [num(p[0], 0.1, 600, 25), num(p[1], 0.1, 600, 5), num(p[2], 0.1, 600, 15), Math.round(num(p[3], 1, 20, 4))]),
 });
-const load = () => { try { return sanitize(JSON.parse(localStorage.getItem('pomodoro') || '{}') || {}); } catch { return sanitize({}); } };
-const save = () => { try { localStorage.setItem('pomodoro', JSON.stringify(cfg)); } catch {} };
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+let cfg = sanitize(store.get('pomodoro') || {});
+const save = () => store.set('pomodoro', cfg);
 
-let cfg = load();
-let animT = 0;
-let phase = 'work', done = 0, total = 0, left = 0, endAt = 0, running = false, timer = 0;
+let phase = 'work', done = 0, total = 0, left = 0, endAt = 0, running = false, over = false, overStart = 0;
+let timer = 0, animT = 0, remindT = 0, remindAt = 0, tip = '';
+let lastTxt = '', lastHtml = '', lastCap = '', lastFrac = -1, lastClip = 0, lastTheme = '', waving = false;
 const dur = p => Math.round(cfg[p] * 60000);
+const today = () => new Date().toDateString();
 const buzz = p => { try { if (navigator.userActivation?.hasBeenActive !== false) navigator.vibrate?.(p); } catch {} };
+const colors = (p = phase) => (PALETTES[cfg.palette] || PALETTES.safran)[p];
+const nextOf = (p, d) => p === 'work' ? (d > 0 && d % cfg.every === 0 ? 'long' : 'short') : 'work';
+const endSound = p => p === 'work' ? cfg.sndWork : cfg.sndBreak;
+const pickTip = () => TIPS[Math.floor(Math.random() * TIPS.length)];
 
 /* ---------- Cadran : deux calques identiques ---------- */
 const tpl = $('face');
 ['below', 'above'].forEach(id => $(id).appendChild(tpl.content.cloneNode(true)));
 const digitEls = document.querySelectorAll('.digits');
 const captionEls = document.querySelectorAll('.caption');
+function applyColors() {
+  const [b, f] = colors();
+  document.body.style.setProperty('--base', b);
+  document.body.style.setProperty('--field', f);
+}
 
-/* ---------- Son (Web Audio, programmé à l'avance : précis même onglet en arrière-plan) ---------- */
+/* ---------- Sons (synthétisés, programmés à l'avance : précis même en arrière-plan) ---------- */
 let ctx = null, master = null, chime = null;
 function audio() {
   if (!ctx) {
@@ -315,28 +433,46 @@ function audio() {
     master = ctx.createGain();
     master.connect(ctx.destination);
     setVol();
+    ctx.onstatechange = () => { if (ctx.state === 'running' && running && !over) armChime(); render(true); };
   }
   if (ctx.state !== 'running') ctx.resume().catch(() => {});
   return ctx;
 }
 function setVol() { if (master) master.gain.value = (cfg.vol / 100) ** 2; }
-function makeChime(delaySec) {
+const SOUNDS = {
+  cloche: (tone, at) => { for (let r = 0; r < 3; r++) [880, 1108.73, 1318.51].forEach((f, i) => tone(at + r * 1.1 + i * 0.16, f, .3, .9)); },
+  gong: (tone, at) => {
+    [[98, .32], [197, .2], [293, .14], [415, .09], [523, .06]].forEach(([f, a]) => tone(at, f, a, 5));
+    [[98, .22], [197, .13], [293, .09]].forEach(([f, a]) => tone(at + 2.6, f, a, 4));
+  },
+  bol: (tone, at) => { for (const t of [at, at + 2.4]) [[432, .22], [435.5, .18], [866, .08], [1301, .05]].forEach(([f, a]) => tone(t, f, a, 4.2)); },
+  bip: (tone, at) => { for (let g = 0; g < 2; g++) for (let i = 0; i < 3; i++) tone(at + g * .9 + i * .2, 1046.5, .2, .14, 'triangle'); },
+  oiseaux: (tone, at) => {
+    for (let ph = 0; ph < 2; ph++) for (let i = 0; i < 6; i++) {
+      const f = 2600 + Math.random() * 900;
+      tone(at + ph * 1.8 + i * .22 + Math.random() * .05, f, .12, .16, 'sine', f * 1.45);
+    }
+  },
+  start: (tone, at) => { tone(at, 659.25, .16, .25); tone(at + .13, 987.77, .16, .35); },
+  remind: (tone, at) => { tone(at, 523.25, .18, .8); tone(at + .5, 523.25, .14, .8); },
+};
+function makeSound(name, delaySec) {
   const c = audio(); if (!c) return null;
   const at = c.currentTime + Math.max(0.05, delaySec);
   const out = c.createGain(); out.connect(master);
   const oscs = [];
-  const notes = [880, 1108.73, 1318.51];
-  for (let r = 0; r < 3; r++) notes.forEach((f, i) => {
-    const t = at + r * 1.1 + i * 0.16;
+  const tone = (t, f, peak, d, type = 'sine', f2) => {
     const o = c.createOscillator(), g = c.createGain();
-    o.type = 'sine'; o.frequency.value = f;
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + d * .5);
     g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.3, t + 0.01);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    g.gain.linearRampToValueAtTime(peak, t + .012);
+    g.gain.exponentialRampToValueAtTime(.0008, t + d);
     o.connect(g); g.connect(out);
-    o.start(t); o.stop(t + 0.95);
+    o.start(t); o.stop(t + d + .05);
     oscs.push(o);
-  });
+  };
+  SOUNDS[name](tone, at);
   return {at, out, oscs};
 }
 function cancelChime() {
@@ -345,6 +481,91 @@ function cancelChime() {
   try { chime.out.disconnect(); } catch {}
   chime = null;
 }
+// (Re)programme la sonnerie de fin de la phase en cours.
+function armChime() {
+  cancelChime();
+  if (ctx && running && !over) chime = makeSound(endSound(phase), (endAt - Date.now()) / 1000);
+}
+
+/* ---------- Ambiance (boucles audio générées, jouées par un lecteur audio) ---------- */
+const amb = new Audio();
+amb.loop = true; amb.preload = 'auto';
+let ambKey = '', ambUrl = '', ambPreviewT = 0;
+function makeWav(kind, vol) {
+  const sr = 22050, gain = (vol / 100) ** 2 * .9;
+  const loop = kind === 'tick' ? sr : sr * 8, F = kind === 'tick' ? 0 : sr >> 1;
+  const a = new Float32Array(loop + F);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0, env = 0;
+  for (let i = 0; i < a.length; i++) {
+    const w = Math.random() * 2 - 1;
+    let v = 0;
+    if (kind === 'white') v = w * .3;
+    else if (kind === 'brown') { last = (last + .02 * w) / 1.02; v = last * 3.2; }
+    else if (kind === 'pink' || kind === 'rain') {
+      b0 = .99886 * b0 + w * .0555179; b1 = .99332 * b1 + w * .0750759; b2 = .969 * b2 + w * .153852;
+      b3 = .8665 * b3 + w * .3104856; b4 = .55 * b4 + w * .5329522; b5 = -.7616 * b5 - w * .016898;
+      v = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * .5362) * .09; b6 = w * .115926;
+      if (kind === 'rain') { if (Math.random() < .0007) env = .3 + Math.random() * .5; v = v * .7 + w * env * .35; env *= .996; }
+    } else if (kind === 'tick') {
+      if (i % (sr / 2) === 0) env = i < sr / 2 ? .55 : .38;
+      v = w * env; env *= .97;
+    }
+    a[i] = v;
+  }
+  for (let i = 0; i < F; i++) { const k = i / F; a[i] = a[i] * k + a[loop + i] * (1 - k); } // boucle sans couture
+  const buf = new ArrayBuffer(44 + loop * 2), d = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) d.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); d.setUint32(4, 36 + loop * 2, true); str(8, 'WAVE'); str(12, 'fmt ');
+  d.setUint32(16, 16, true); d.setUint16(20, 1, true); d.setUint16(22, 1, true); d.setUint32(24, sr, true);
+  d.setUint32(28, sr * 2, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true); str(36, 'data'); d.setUint32(40, loop * 2, true);
+  for (let i = 0; i < loop; i++) d.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a[i] * gain)) * 32767, true);
+  return URL.createObjectURL(new Blob([buf], {type: 'audio/wav'}));
+}
+function loadAmbient() {
+  const key = cfg.ambient + ':' + cfg.ambVol;
+  if (key === ambKey) return;
+  const old = ambUrl;
+  ambUrl = makeWav(cfg.ambient, cfg.ambVol); ambKey = key;
+  amb.src = ambUrl;
+  if (old) URL.revokeObjectURL(old);
+}
+const ambientWanted = () => cfg.ambient !== 'none' && running && phase === 'work';
+function syncAmbient() {
+  if (ambientWanted()) {
+    clearTimeout(ambPreviewT); ambPreviewT = 0;
+    loadAmbient();
+    if (amb.paused) amb.play().catch(() => {});
+  } else if (!amb.paused && !ambPreviewT) amb.pause();
+}
+function previewAmbient() {
+  if (cfg.ambient === 'none') { clearTimeout(ambPreviewT); ambPreviewT = 0; syncAmbient(); return; }
+  loadAmbient();
+  if (ambientWanted()) return;
+  amb.play().catch(() => {});
+  clearTimeout(ambPreviewT);
+  ambPreviewT = setTimeout(() => { ambPreviewT = 0; syncAmbient(); }, 2500);
+}
+
+/* ---------- Contrôles sur l'écran verrouillé (Media Session) ---------- */
+function syncMedia() {
+  const ms = navigator.mediaSession; if (!ms) return;
+  try {
+    const on = cfg.media && cfg.ambient !== 'none' && phase === 'work' && (running || left < total);
+    if (!on) { ms.metadata = null; ms.playbackState = 'none'; return; }
+    ms.metadata = new MediaMetadata({
+      title: over ? 'Focus · en flow' : running ? `Focus · fin à ${clock(endAt)}` : 'Focus en pause',
+      artist: 'Pomodoro',
+      artwork: [{src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png'}],
+    });
+    ms.playbackState = running ? 'playing' : 'paused';
+    if (running && !over) ms.setPositionState({duration: total / 1000, playbackRate: 1, position: Math.max(0, Math.min(total, total - (endAt - Date.now()))) / 1000});
+  } catch {}
+}
+try {
+  navigator.mediaSession?.setActionHandler('play', () => { if (!running) start(true); });
+  navigator.mediaSession?.setActionHandler('pause', () => { if (running && !over) pause(); });
+  navigator.mediaSession?.setActionHandler('nexttrack', () => skip());
+} catch {}
 
 /* ---------- PWA : service worker, notifications, installation ---------- */
 let swReg = null;
@@ -356,7 +577,7 @@ function askNotif() {
 }
 function notify(msg) {
   try {
-    if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
+    if (pushActive || !('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
     const opts = {body: msg, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'pomodoro', renotify: true};
     if (swReg) swReg.showNotification('Pomodoro', opts).catch(() => {});
     else new Notification('Pomodoro', opts);
@@ -378,6 +599,53 @@ $('installBtn').addEventListener('click', async () => {
   installEvt = null; updateInstall();
 });
 
+/* ---------- Alerte écran verrouillé : notification push envoyée par le serveur ---------- */
+const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && isSecureContext;
+let pushSub = null, pushActive = false;
+const device = (() => {
+  let d = store.get('pomodoro-device');
+  if (typeof d !== 'string') { d = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36); store.set('pomodoro-device', d); }
+  return d;
+})();
+const b64u = s => { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, c => c.charCodeAt(0)); };
+async function enablePush() {
+  try {
+    if (await Notification.requestPermission() !== 'granted') return false;
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const {publicKey} = await fetch(PUSH_URL).then(r => r.json());
+      sub = await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64u(publicKey)});
+    }
+    pushSub = sub.toJSON();
+    return true;
+  } catch { return false; }
+}
+// Fins de phase à venir (enchaînées si besoin), pour que le serveur prévienne à l'heure.
+function upcoming() {
+  const jobs = [], now = Date.now(), iso = t => new Date(t).toISOString();
+  if (!running) { if (cfg.remind && remindAt > now) jobs.push({at: iso(remindAt), kind: 'idle'}); return jobs; }
+  if (over) return jobs;
+  let p = phase, d = done, end = endAt;
+  for (let i = 0; i < 12 && end - now < 12 * 3600e3; i++) {
+    jobs.push({at: iso(end), kind: p});
+    if (p === 'work') { d++; if (cfg.flow) break; }
+    if (!cfg.auto) { if (cfg.remind) jobs.push({at: iso(end + 120000), kind: 'idle'}); break; }
+    p = nextOf(p, d); end += dur(p);
+  }
+  return jobs;
+}
+function pushSync(hidden) {
+  if (!cfg.push || !pushSub) return;
+  const jobs = hidden ? upcoming() : [];
+  if (!jobs.length && !pushActive) return;
+  pushActive = jobs.length > 0;
+  const body = jobs.length ? {action: 'schedule', device, subscription: pushSub, jobs} : {action: 'cancel', device};
+  try {
+    fetch(PUSH_URL, {method: 'POST', keepalive: true, headers: {'Content-Type': 'text/plain;charset=UTF-8'}, body: JSON.stringify(body)}).catch(() => {});
+  } catch {}
+}
+
 /* ---------- Écran allumé pendant le décompte ---------- */
 let wakeLock = null, wakePending = false;
 function syncWakeLock() {
@@ -396,95 +664,186 @@ function syncWakeLock() {
   }
 }
 
-/* ---------- Minuteur (basé sur l'heure de fin : aucune dérive) ---------- */
-const nextPhase = d => phase === 'work' ? (d > 0 && d % cfg.every === 0 ? 'long' : 'short') : 'work';
-
-function setPhase(p) {
-  running = false; clearTimeout(timer); cancelChime();
-  phase = p; total = dur(p); left = total;
-  document.body.dataset.phase = p;
-  if (lastFrac > 0.001) { // le niveau remonte en douceur, puis suit le temps en direct
-    $('above').classList.add('anim');
-    clearTimeout(animT); animT = setTimeout(() => $('above').classList.remove('anim'), 950);
-  }
+/* ---------- Minuteur (basé sur l'heure de fin : aucune dérive, reprise après fermeture) ---------- */
+function saveState() {
+  store.set('pomodoro-state', {phase, done, total, left, endAt, running, over, overStart, day: today()});
+}
+function setPhase(p, ms) {
+  running = false; over = false; clearTimeout(timer); cancelChime();
+  clearTimeout(remindT); remindAt = 0;
+  phase = p; total = ms || dur(p); left = total; tip = pickTip();
+  applyColors();
+  if (lastFrac > 0.001 && !waving) cssRefill();
   render(true);
 }
-function start() {
-  if (running || left <= 0) return;
-  audio(); askNotif();
+function start(manual) {
+  if (running || over || left <= 0) return;
+  audio(); if (manual) askNotif();
   running = true;
   endAt = Date.now() + left;
-  cancelChime(); chime = makeChime(left / 1000);
+  armChime();
+  if (manual && cfg.sndStart) makeSound('start', 0);
   clearTimeout(timer); timer = setTimeout(check, left + 30);
+  clearTimeout(remindT); remindAt = 0;
   render(true); armIdle();
 }
 function pause() {
+  if (over) { endFlow(); return; }
   if (!running) return;
   left = Math.max(0, endAt - Date.now());
   running = false; clearTimeout(timer); cancelChime();
   render(true); wake();
 }
 function check() {
-  if (!running) return;
+  if (!running || over) return;
   const rem = endAt - Date.now();
-  if (rem <= 0) finish();
+  if (rem <= 0) advance(false);
   else { clearTimeout(timer); timer = setTimeout(check, rem + 30); }
 }
-function finish() {
-  if (!running) return;
-  running = false; clearTimeout(timer);
-  // Si le son programmé n'a pas pu jouer (contexte audio suspendu, app en arrière-plan…), on le joue maintenant.
-  if (!chime || !ctx || ctx.state !== 'running' || ctx.currentTime < chime.at - 0.3) { cancelChime(); makeChime(0); }
+// Termine la ou les phases écoulées (plusieurs si l'app était fermée pendant l'enchaînement).
+function advance(fromLoad) {
+  if (!running || over) return;
+  const now = Date.now();
+  if (now < endAt) return;
+  const firstEnd = endAt, firstPhase = phase;
+  if (now - endAt > 12 * 3600e3) { setPhase('work'); return; } // trop ancien : on repart proprement
+  while (running && !over && now >= endAt) {
+    const ended = phase;
+    if (ended === 'work') done++;
+    if (ended === 'work' && cfg.flow) { over = true; overStart = endAt; break; }
+    const prevEnd = endAt;
+    phase = nextOf(ended, done); total = dur(phase); left = total; tip = pickTip();
+    if (cfg.auto) endAt = prevEnd + total; else running = false;
+  }
+  clearTimeout(timer);
+  if (running && !over) timer = setTimeout(check, endAt - now + 30);
+  if (!fromLoad && now - firstEnd < 180000) {
+    // Si le son programmé n'a pas pu jouer (contexte audio suspendu, app en arrière-plan…), on le joue maintenant.
+    if (!chime || !ctx || ctx.state !== 'running' || ctx.currentTime < chime.at - .3) { cancelChime(); makeSound(endSound(firstPhase), 0); }
+    buzz([220, 120, 220, 120, 420]);
+    notify(firstPhase === 'work' ? (over ? 'Focus terminé. Continue en flow.' : 'Session terminée. Place à la pause.') : 'Pause terminée, on reprend.');
+  }
   chime = null; // laisse sonner, ne sera pas annulé par la phase suivante
-  buzz([220, 120, 220, 120, 420]);
-  if (phase === 'work') done++;
-  const np = nextPhase(done);
-  notify(phase === 'work' ? `Session terminée. Place à : ${LABEL[np]}` : 'Pause terminée, on reprend.');
-  setPhase(np);
+  applyColors();
+  if (!fromLoad) refill();
+  if (running) armChime(); else armRemind();
   wake();
-  if (cfg.auto) start();
+  render(true);
 }
-function skip() { setPhase(nextPhase(phase === 'work' ? done + 1 : done)); wake(); }
+function endFlow() {
+  if (!over) return;
+  over = false; running = false;
+  setPhase(nextOf('work', done));
+  if (cfg.auto) start(false);
+}
+function skip() {
+  if (over) endFlow();
+  else setPhase(nextOf(phase, phase === 'work' ? done + 1 : done));
+  wake();
+}
 function reset() { setPhase(phase); wake(); }
-function toggle() { buzz(8); running ? pause() : start(); }
+function toggle() { buzz(8); over ? endFlow() : running ? pause() : start(true); }
+function armRemind() {
+  clearTimeout(remindT); remindAt = 0;
+  if (!cfg.remind || running) return;
+  remindAt = Date.now() + 120000;
+  remindT = setTimeout(() => {
+    remindAt = 0;
+    if (!running && !over && left === total && cfg.remind) { makeSound('remind', 0); notify('Le minuteur attend. On s’y remet ?'); }
+  }, 120000);
+}
+
+/* ---------- Animations du niveau ---------- */
+function cssRefill() {
+  $('above').classList.add('anim');
+  clearTimeout(animT); animT = setTimeout(() => $('above').classList.remove('anim'), 950);
+}
+function refill() {
+  if (!cfg.wave || reduced.matches || document.hidden) { cssRefill(); return; }
+  const el = $('above'), from = Math.min(100, Math.max(0, lastClip)), t0 = performance.now(), D = 1400;
+  waving = true; el.classList.remove('anim');
+  const step = now => {
+    const p = Math.min(1, (now - t0) / D), e = 1 - (1 - p) ** 3;
+    const level = from + (clipTopNow() - from) * e, amp = 4.5 * (1 - e), sh = p * Math.PI * 5;
+    const pts = ['0% 100%'];
+    for (let x = 0; x <= 100; x += 4) pts.push(`${x}% ${(level + amp * Math.sin(x / 100 * Math.PI * 2.4 + sh)).toFixed(2)}%`);
+    pts.push('100% 100%');
+    el.style.clipPath = `polygon(${pts.join(',')})`;
+    if (p < 1) requestAnimationFrame(step); else { waving = false; render(true); }
+  };
+  requestAnimationFrame(step);
+}
+// Respiration : expiration 6 s (le niveau descend), inspiration 4 s (il remonte).
+function breath(now) {
+  const t = (now % 10000) / 10000;
+  return t < .4 ? (1 - Math.cos(Math.PI * t / .4)) / 2 : (1 + Math.cos(Math.PI * (t - .4) / .6)) / 2;
+}
+const breathing = () => cfg.breathe && running && !over && phase !== 'work' && !reduced.matches;
+function fracNow() {
+  if (over) return 1;
+  const rem = running ? Math.max(0, endAt - Date.now()) : left;
+  return total ? 1 - rem / total : 0;
+}
+function clipTopNow() {
+  const f = fracNow() * 100;
+  return breathing() ? Math.min(100, f + 9 * (1 - breath(Date.now()))) : f;
+}
 
 /* ---------- Affichage ---------- */
 const pad = n => String(n).padStart(2, '0');
-const clock = t => new Date(t).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-const grp = s => `<span class="grp">${[...s].map(c => `<i>${c}</i>`).join('')}</span>`;
+const clock = t => new Date(t).toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+const grp = s => `<span class="grp">${[...s].map(c => c === '+' ? '<i class="pl">+</i>' : `<i>${c}</i>`).join('')}</span>`;
 const SEP = '<span class="sep">:</span>';
-let lastTxt = '', lastCap = '', lastFrac = -1, lastTheme = '';
+function timeParts(ms, up) {
+  const s = up ? Math.floor(ms / 1000) : Math.ceil(ms / 1000);
+  if (cfg.hideSec && s >= 60) {
+    const m = up ? Math.floor(s / 60) : Math.ceil(s / 60), h = Math.floor(m / 60);
+    return h ? [String(h), pad(m % 60)] : [String(m)];
+  }
+  const h = Math.floor(s / 3600);
+  return h ? [String(h), pad(Math.floor(s / 60) % 60), pad(s % 60)] : [pad(Math.floor(s / 60)), pad(s % 60)];
+}
 function render(force) {
-  const rem = running ? Math.max(0, endAt - Date.now()) : left;
-  const s = Math.ceil(rem / 1000), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
-  const parts = h ? [String(h), pad(m), pad(sec)] : [pad(Math.floor(s / 60)), pad(sec)];
+  const now = Date.now();
+  const rem = over ? 0 : running ? Math.max(0, endAt - now) : left;
+  const parts = over ? timeParts(now - overStart, true) : timeParts(rem, false);
+  if (over) parts[0] = '+' + parts[0];
   const txt = parts.join(':');
   if (txt !== lastTxt) {
-    const html = parts.map(grp).join(SEP);
-    digitEls.forEach(el => { el.innerHTML = html; el.classList.toggle('hours', h > 0); });
+    lastHtml = parts.map(grp).join(SEP);
+    digitEls.forEach(el => { el.innerHTML = lastHtml; el.classList.toggle('hours', parts.length === 3); });
     $('sr').textContent = txt;
     lastTxt = txt;
   }
-  const cap = running ? `${LABEL[phase]} · fin à ${clock(endAt)}`
+  const cap = over ? 'Focus · en flow'
+    : running && phase !== 'work' && cfg.tips ? tip
+    : running ? `${LABEL[phase]} · fin à ${clock(endAt)}`
     : left < total ? `${LABEL[phase]} en pause` : `${LABEL[phase]} · ${formatDur(total)}`;
   if (cap !== lastCap) { captionEls.forEach(el => el.textContent = cap); lastCap = cap; }
 
-  const frac = total ? 1 - rem / total : 0; // part écoulée → le niveau descend
-  if (force || Math.abs(frac - lastFrac) > 0.0002) {
-    $('above').style.clipPath = `inset(${(frac * 100).toFixed(3)}% 0 0 0)`;
-    lastFrac = frac;
+  const frac = fracNow(), breathe = breathing();
+  const clip = breathe ? clipTopNow() : frac * 100;
+  if (!waving && (force || breathe || Math.abs(frac - lastFrac) > .0002)) {
+    $('above').style.clipPath = `inset(${clip.toFixed(3)}% 0 0 0)`;
+    lastClip = clip;
   }
+  lastFrac = frac;
   // La barre d'état du téléphone prend la couleur du haut de l'écran.
-  const theme = THEME[phase][frac > 0.004 ? 0 : 1];
+  const theme = colors()[lastClip > .4 ? 0 : 1];
   if (theme !== lastTheme) { $('themeColor').setAttribute('content', theme); lastTheme = theme; }
+  drawFav(frac);
+  if (pipWin) pipRender(lastClip);
   if (!force) return;
-  $('toggle').textContent = running ? 'Pause' : (left < total ? 'Reprendre' : 'Démarrer');
+
+  $('toggle').textContent = over ? 'Terminer' : running ? 'Pause' : (left < total ? 'Reprendre' : 'Démarrer');
   document.querySelectorAll('.phases button').forEach(b => b.setAttribute('aria-pressed', b.dataset.p === phase));
   renderDots();
-  document.title = (running || left < total) ? `${txt} · ${LABEL[phase]}` : 'Pomodoro';
-  syncWakeLock();
+  $('sound').hidden = !soundBlocked();
+  document.title = (running || over || left < total) ? `${txt} · ${LABEL[phase]}` : 'Pomodoro';
+  syncWakeLock(); syncAmbient(); syncMedia();
+  if (document.hidden) pushSync(true);
+  saveState();
 }
-const THEME = {work:['#24112B', '#F4B740'], short:['#0E2B26', '#A8DEC0'], long:['#151B3D', '#B4C2FF']};
 function formatDur(ms) {
   const min = ms / 60000;
   if (min >= 60) { const h = Math.floor(min / 60), r = Math.round(min % 60); return r ? `${h} h ${r}` : `${h} h`; }
@@ -498,23 +857,86 @@ function renderDots() {
   $('dots').innerHTML = html;
 }
 
-// Rendu fluide quand l'app est visible ; contrôle de fin même en arrière-plan.
+/* ---------- Progression dans l'icône de l'onglet ---------- */
+const favLink = document.querySelector('link[rel=icon]');
+const favCanvas = document.createElement('canvas');
+favCanvas.width = favCanvas.height = 64;
+let favKey = '';
+function drawFav(frac) {
+  const key = cfg.favProg ? `${cfg.palette}${phase}${Math.round(frac * 32)}` : 'off';
+  if (key === favKey) return;
+  favKey = key;
+  if (!cfg.favProg) { favLink.href = 'icons/favicon-32.png'; return; }
+  const [base, field] = colors(), g = favCanvas.getContext('2d');
+  if (!g) return;
+  g.clearRect(0, 0, 64, 64); g.save(); g.beginPath();
+  g.roundRect ? g.roundRect(0, 0, 64, 64, 14) : g.rect(0, 0, 64, 64);
+  g.clip();
+  g.fillStyle = base; g.fillRect(0, 0, 64, 64);
+  const y = Math.round(frac * 64);
+  g.fillStyle = field; g.fillRect(0, y, 64, 64 - y);
+  g.restore();
+  favLink.href = favCanvas.toDataURL('image/png');
+}
+
+/* ---------- Mini-fenêtre flottante (PC) ---------- */
+const pipOK = 'documentPictureInPicture' in window;
+let pipWin = null, pipLast = '';
+const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.86l11.2-7.2a1 1 0 0 0 0-1.72L8.5 3.94A1 1 0 0 0 7 4.8Z"/></svg>';
+const PAUSE_SVG = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>';
+const PIP_CSS = `html,body{margin:0;height:100%;overflow:hidden;background:var(--base);user-select:none}
+.l{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#b{background:var(--base);color:var(--field)}#a{background:var(--field);color:var(--base)}
+.d{display:flex;align-items:center;font:800 min(70vh,34vw)/.82 "Big Shoulders Display","Arial Narrow",Impact,sans-serif}
+.grp{display:flex}.d i{font-style:normal;display:inline-block;width:.52em;text-align:center}.d i.pl{width:.42em}.sep{width:.24em;text-align:center}
+#t{position:fixed;right:10px;bottom:10px;width:36px;height:36px;border-radius:50%;border:0;background:var(--base);color:var(--field);
+display:grid;place-items:center;cursor:pointer;opacity:0;transition:opacity .2s;box-shadow:0 4px 14px rgb(0 0 0/.35)}
+body:hover #t,#t:focus-visible{opacity:1}#t svg{width:16px;height:16px}`;
+async function togglePip() {
+  if (!pipOK) return;
+  if (pipWin) { pipWin.close(); return; }
+  try { pipWin = await documentPictureInPicture.requestWindow({width: 280, height: 160}); } catch { pipWin = null; return; }
+  const d = pipWin.document;
+  d.head.innerHTML = `<meta charset="utf-8"><title>Pomodoro</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&display=swap"><style>${PIP_CSS}</style>`;
+  d.body.innerHTML = '<div class="l" id="b"><div class="d"></div></div><div class="l" id="a"><div class="d"></div></div><button id="t" aria-label="Démarrer ou mettre en pause"></button>';
+  d.getElementById('t').addEventListener('click', toggle);
+  d.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); toggle(); } });
+  pipWin.addEventListener('pagehide', () => { pipWin = null; pipLast = ''; });
+  pipLast = '';
+  render(true);
+}
+function pipRender(clip) {
+  const d = pipWin.document, [b, f] = colors();
+  d.body.style.setProperty('--base', b); d.body.style.setProperty('--field', f);
+  const key = lastHtml + (running && !over);
+  if (key !== pipLast) {
+    d.querySelectorAll('.d').forEach(e => e.innerHTML = lastHtml);
+    const t = d.getElementById('t'); if (t) t.innerHTML = running && !over ? PAUSE_SVG : PLAY_SVG;
+    pipLast = key;
+  }
+  const a = d.getElementById('a'); if (a) a.style.clipPath = `inset(${clip.toFixed(2)}% 0 0 0)`;
+}
+
+/* ---------- Boucle d'affichage : fluide au premier plan, contrôle de fin même en arrière-plan ---------- */
 function frame() {
   if (running) {
-    if (endAt - Date.now() <= 0) finish();
+    if (!over && endAt - Date.now() <= 0) advance(false);
     else { render(false); const t = `${lastTxt} · ${LABEL[phase]}`; if (document.title !== t) document.title = t; }
   }
   requestAnimationFrame(frame);
 }
-requestAnimationFrame(frame);
 setInterval(() => {
   if (!running) return;
-  if (endAt - Date.now() <= 0) finish();
+  if (!over && endAt - Date.now() <= 0) advance(false);
   else if (document.hidden) { render(false); document.title = `${lastTxt} · ${LABEL[phase]}`; }
 }, 500);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { if (ctx && running) audio(); check(); render(true); }
+  if (document.hidden) { pushSync(true); return; }
+  if (ctx && running) audio();
+  advance(false); render(true);
+  pushSync(false);
 });
+addEventListener('pagehide', () => pushSync(true));
 
 /* ---------- Mode concentration : l'interface s'efface quand on ne touche à rien ---------- */
 let idleT = 0;
@@ -525,27 +947,58 @@ function armIdle() {
     if (running && !document.body.classList.contains('open') && !document.querySelector('.chrome:hover')) document.body.classList.add('idle');
   }, mobile.matches ? 4000 : 3000);
 }
-['mousemove', 'mousedown', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, {passive:true}));
-document.addEventListener('touchmove', e => { if (!e.target.closest('#drawer')) e.preventDefault(); }, {passive:false});
+['mousemove', 'mousedown', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, {passive: true}));
+document.addEventListener('touchmove', e => { if (!e.target.closest('#drawer')) e.preventDefault(); }, {passive: false});
+// Le navigateur bloque le son tant qu'on n'a pas touché la page : on le débloque au premier geste.
+const soundBlocked = () => running && !over && (!ctx || ctx.state !== 'running');
+function unlock() {
+  if (!soundBlocked() && !(ctx && ctx.state !== 'running') && !(running && !over && !chime)) return;
+  audio();
+  if (running && !over && !chime) armChime();
+  render(true);
+}
+document.addEventListener('pointerdown', unlock, true);
+document.addEventListener('keydown', unlock, true);
 
 /* ---------- Réglages ---------- */
+function renderChips(el, labels, value) {
+  el.innerHTML = Object.entries(labels).map(([v, l]) => `<button class="chip${v === value ? ' on' : ''}" data-v="${v}">${l}</button>`).join('');
+}
+const fmtMin = v => String(+v.toFixed(2)).replace('.', ',');
+function renderPresets() {
+  const same = (w, s, l, e) => cfg.work === w && cfg.short === s && cfg.long === l && (e === undefined || cfg.every === e);
+  let html = BUILTIN.map(([w, s, l, name], i) =>
+    `<button class="preset${same(w, s, l) ? ' on' : ''}" data-b="${i}"><strong>${w} / ${s}</strong><small>${name}</small></button>`).join('');
+  html += cfg.presets.map(([w, s, l, e], i) =>
+    `<div class="pwrap"><button class="preset${same(w, s, l, e) ? ' on' : ''}" data-c="${i}"><strong>${fmtMin(w)} / ${fmtMin(s)}</strong><small>${fmtMin(l)} · ×${e}</small></button>` +
+    `<button class="del" data-del="${i}" aria-label="Supprimer cette formule">×</button></div>`).join('');
+  const exists = BUILTIN.some(([w, s, l]) => same(w, s, l)) || cfg.presets.some(([w, s, l, e]) => same(w, s, l, e));
+  if (!exists && cfg.presets.length < 6) html += '<button class="preset add" id="addPreset" aria-label="Enregistrer ces durées"><strong>+</strong><small>Enregistrer</small></button>';
+  $('presets').innerHTML = html;
+}
+function renderPalettes() {
+  $('palettes').innerHTML = Object.entries(PALETTES).map(([k, p]) =>
+    `<button class="swatch${k === cfg.palette ? ' on' : ''}" data-v="${k}" title="${PALETTE_LABEL[k]}" aria-label="${PALETTE_LABEL[k]}" style="background:linear-gradient(135deg,${p.work[1]} 0 50%,${p.work[0]} 50% 100%)"></button>`).join('');
+}
 function fillInputs() {
   for (const k of ['work', 'short', 'long', 'every']) $(k).value = +cfg[k].toFixed(2);
-  $('auto').checked = cfg.auto; $('awake').checked = cfg.awake; $('vol').value = cfg.vol;
-  document.querySelectorAll('[data-preset]').forEach(b => {
-    const [w, s, l] = b.dataset.preset.split(',').map(Number);
-    b.classList.toggle('on', cfg.work === w && cfg.short === s && cfg.long === l);
-  });
+  document.querySelectorAll('input.switch[data-k]').forEach(i => { i.checked = cfg[i.dataset.k]; });
+  $('push').checked = cfg.push;
+  $('vol').value = cfg.vol; $('ambVol').value = cfg.ambVol;
+  $('ambVolRow').hidden = cfg.ambient === 'none';
+  renderChips($('sndWork'), SOUND_LABEL, cfg.sndWork);
+  renderChips($('sndBreak'), SOUND_LABEL, cfg.sndBreak);
+  renderChips($('ambient'), AMB_LABEL, cfg.ambient);
+  renderPresets(); renderPalettes();
 }
 function applyCfg(next) {
   cfg = sanitize(next);
-  save(); fillInputs(); setVol();
+  save(); fillInputs(); setVol(); applyColors();
   // Phase non entamée : on applique tout de suite. Sinon : à la phase suivante.
-  if (!running && left === total) setPhase(phase); else render(true);
+  if (!running && !over && left === total) setPhase(phase); else render(true);
 }
-const readInputs = () => applyCfg({work: $('work').value, short: $('short').value, long: $('long').value,
-  every: $('every').value, auto: $('auto').checked, awake: $('awake').checked, vol: $('vol').value});
-['work', 'short', 'long', 'every', 'auto', 'awake'].forEach(k => $(k).addEventListener('change', readInputs));
+const readInputs = () => applyCfg({...cfg, work: $('work').value, short: $('short').value, long: $('long').value, every: $('every').value});
+['work', 'short', 'long', 'every'].forEach(k => $(k).addEventListener('change', readInputs));
 document.querySelectorAll('.stepper input').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') i.blur(); }));
 document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => {
   const [k, d] = b.dataset.step.split(','); const [min, max] = LIMITS[k];
@@ -554,16 +1007,60 @@ document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click'
   buzz(5);
   applyCfg({...cfg, [k]: v});
 }));
-document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => {
-  const [work, short, long] = b.dataset.preset.split(',').map(Number);
-  buzz(8);
-  applyCfg({...cfg, work, short, long});
+document.querySelectorAll('input.switch[data-k]').forEach(i => i.addEventListener('change', () => applyCfg({...cfg, [i.dataset.k]: i.checked})));
+$('push').addEventListener('change', async e => {
+  if (e.target.checked) {
+    const ok = await enablePush();
+    applyCfg({...cfg, push: ok});
+  } else {
+    pushSync(false);
+    applyCfg({...cfg, push: false});
+  }
+});
+document.querySelectorAll('[data-chip]').forEach(el => el.addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  const k = el.dataset.chip, v = b.dataset.v;
+  buzz(5);
+  applyCfg({...cfg, [k]: v});
+  if (k === 'ambient') previewAmbient(); else { cancelPreview(); preview = makeSound(v, 0); armChime(); }
 }));
+let preview = null;
+function cancelPreview() {
+  if (!preview) return;
+  preview.oscs.forEach(o => { try { o.stop(); } catch {} });
+  try { preview.out.disconnect(); } catch {}
+  preview = null;
+}
 $('vol').addEventListener('input', () => { cfg.vol = Math.round(num($('vol').value, 0, 100, DEF.vol)); setVol(); save(); });
-$('test').addEventListener('click', () => { makeChime(0); buzz([200, 100, 200]); });
+$('vol').addEventListener('change', () => { cancelPreview(); preview = makeSound(cfg.sndWork, 0); });
+$('ambVol').addEventListener('change', () => { applyCfg({...cfg, ambVol: $('ambVol').value}); previewAmbient(); });
+$('presets').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  buzz(8);
+  if (t.id === 'addPreset') applyCfg({...cfg, presets: [...cfg.presets, [cfg.work, cfg.short, cfg.long, cfg.every]]});
+  else if (t.dataset.del !== undefined) applyCfg({...cfg, presets: cfg.presets.filter((_, i) => i !== +t.dataset.del)});
+  else if (t.dataset.b !== undefined) { const [work, short, long] = BUILTIN[+t.dataset.b]; applyCfg({...cfg, work, short, long}); }
+  else if (t.dataset.c !== undefined) { const [work, short, long, every] = cfg.presets[+t.dataset.c]; applyCfg({...cfg, work, short, long, every}); }
+});
+$('palettes').addEventListener('click', e => {
+  const b = e.target.closest('.swatch'); if (!b) return;
+  buzz(5); favKey = '';
+  applyCfg({...cfg, palette: b.dataset.v});
+});
 $('resetCycle').addEventListener('click', () => { done = 0; setPhase('work'); });
 if (!('wakeLock' in navigator)) $('awakeRow').hidden = true;
+if (!pushSupported) $('pushRow').hidden = true;
+if (!('mediaSession' in navigator)) $('mediaRow').hidden = true;
 if (!document.fullscreenEnabled || isStandalone) $('fs').hidden = true;
+$('pip').hidden = !pipOK || mobile.matches;
+
+const TITLES = {timer: 'Minuteur', sound: 'Son', pause: 'Pause', look: 'Affichage', device: 'Appareil'};
+document.querySelectorAll('.stabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.stabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+  document.querySelectorAll('.panel').forEach(p => { p.hidden = p.dataset.panel !== b.dataset.tab; });
+  $('stitle').textContent = TITLES[b.dataset.tab];
+  drawer.scrollTop = 0;
+}));
 
 const drawer = $('drawer');
 function openSettings(open, refocus) {
@@ -582,7 +1079,7 @@ let dragY = null, dragDy = 0;
 drawer.addEventListener('touchstart', e => {
   dragY = (mobile.matches && drawer.scrollTop <= 0 && !e.target.closest('input')) ? e.touches[0].clientY : null;
   dragDy = 0;
-}, {passive:true});
+}, {passive: true});
 drawer.addEventListener('touchmove', e => {
   if (dragY === null) return;
   dragDy = e.touches[0].clientY - dragY;
@@ -591,7 +1088,7 @@ drawer.addEventListener('touchmove', e => {
     drawer.style.transition = 'none';
     drawer.style.transform = `translateY(${dragDy}px)`;
   } else { dragY = null; drawer.style.transition = ''; drawer.style.transform = ''; }
-}, {passive:false});
+}, {passive: false});
 const endDrag = () => {
   if (dragY === null) return;
   drawer.style.transition = ''; drawer.style.transform = '';
@@ -613,6 +1110,8 @@ $('toggle').addEventListener('click', toggle);
 $('reset').addEventListener('click', () => { buzz(8); reset(); });
 $('skip').addEventListener('click', () => { buzz(8); skip(); });
 $('fs').addEventListener('click', toggleFs);
+$('pip').addEventListener('click', togglePip);
+$('sound').addEventListener('click', unlock);
 document.querySelectorAll('.phases button').forEach(b => b.addEventListener('click', () => { buzz(5); setPhase(b.dataset.p); wake(); }));
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.body.classList.contains('open')) { openSettings(false, true); return; }
@@ -626,13 +1125,53 @@ document.addEventListener('keydown', e => {
   if (k === 'r') reset();
   else if (k === 's') skip();
   else if (k === 'f') toggleFs();
+  else if (k === 'p' && !$('pip').hidden) togglePip();
 });
 document.addEventListener('keyup', e => { if (e.code === 'Space' && e.target.closest('button') && !document.body.classList.contains('open')) e.preventDefault(); });
 window.addEventListener('beforeunload', e => { if (running && !isStandalone) { e.preventDefault(); e.returnValue = ''; } });
 
+/* ---------- Démarrage : reprise de l'état, puis raccourcis d'app (?start=work&min=50) ---------- */
+function restore() {
+  const s = store.get('pomodoro-state');
+  if (!s || !LABEL[s.phase]) return false;
+  phase = s.phase;
+  done = s.day === today() ? Math.max(0, Math.round(num(s.done, 0, 999, 0))) : 0;
+  total = num(s.total, 1000, 600 * 60000, dur(phase));
+  left = num(s.left, 0, total, total);
+  running = !!s.running && Number.isFinite(s.endAt);
+  endAt = running ? s.endAt : 0;
+  over = running && !!s.over && Number.isFinite(s.overStart);
+  overStart = over ? s.overStart : 0;
+  tip = pickTip();
+  applyColors();
+  if (over && Date.now() - overStart > 12 * 3600e3) { setPhase('work'); return true; }
+  if (running && !over) {
+    if (Date.now() >= endAt) advance(true);
+    else timer = setTimeout(check, endAt - Date.now() + 30);
+  }
+  render(true);
+  return true;
+}
+function fromUrl() {
+  const q = new URLSearchParams(location.search), p = q.get('start');
+  if (!p) return;
+  history.replaceState(null, '', location.pathname);
+  if (!LABEL[p]) return;
+  const min = num(q.get('min'), 0.1, 600, 0);
+  setPhase(p, min ? Math.round(min * 60000) : 0);
+  start(false);
+}
+
 fillInputs();
 updateInstall();
-setPhase('work');
+if (!restore()) setPhase('work');
+fromUrl();
+if (cfg.push && pushSupported) {
+  navigator.serviceWorker.ready.then(r => r.pushManager.getSubscription()).then(s => {
+    if (s) pushSub = s.toJSON(); else { cfg.push = false; save(); fillInputs(); }
+  }).catch(() => {});
+}
+requestAnimationFrame(frame);
 })();
 </script>
 </body>

@@ -1,5 +1,5 @@
 // Service worker : l'app fonctionne hors ligne et se met à jour en arrière-plan.
-const VERSION = 'pomodoro-v3';
+const VERSION = 'pomodoro-v4';
 const FONTS = 'pomodoro-fonts';
 const SHELL = [
   './',
@@ -67,6 +67,19 @@ self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(key, {ignoreSearch: true}).then(hit => hit || network)
   );
+});
+
+// Alerte envoyée par le serveur à la fin d'une phase (app fermée ou écran verrouillé).
+self.addEventListener('push', event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch {}
+  event.waitUntil(self.registration.showNotification(d.title || 'Pomodoro', {
+    body: d.body || '',
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    tag: 'pomodoro',
+    renotify: true,
+  }));
 });
 
 // Toucher la notification ramène sur l'app.
