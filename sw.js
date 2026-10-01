@@ -1,5 +1,5 @@
 // Service worker : l'app fonctionne hors ligne et se met à jour en arrière-plan.
-const VERSION = 'pomodoro-v1';
+const VERSION = 'pomodoro-v2';
 const FONTS = 'pomodoro-fonts';
 const SHELL = [
   './',
@@ -43,8 +43,22 @@ self.addEventListener('fetch', event => {
 
   if (url.origin !== self.location.origin) return;
 
-  // Fichiers de l'app : réponse immédiate depuis le cache, mise à jour en arrière-plan.
-  const key = req.mode === 'navigate' ? './index.html' : req;
+  // Page : toujours la dernière version si le réseau répond vite, sinon la copie hors ligne.
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const res = await Promise.race([fetch(req), new Promise((_, no) => setTimeout(no, 3000))]);
+        if (res.ok) (await caches.open(VERSION)).put('./index.html', res.clone());
+        return res;
+      } catch {
+        return (await caches.match('./index.html')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  // Autres fichiers : réponse immédiate depuis le cache, mise à jour en arrière-plan.
+  const key = req;
   const network = fetch(req).then(async res => {
     if (res.ok) (await caches.open(VERSION)).put(key, res.clone());
     return res;
