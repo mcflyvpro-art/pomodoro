@@ -75,6 +75,7 @@ async function tick() {
   }));
   if (jobs.length) await sb.from("pomodoro_push_jobs").delete().in("id", jobs.map((j) => j.id));
   await sb.from("pomodoro_push_jobs").delete().eq("claimed", true).lt("fire_at", new Date(Date.now() - 3600e3).toISOString());
+  await sb.from("pomodoro_push_devices").delete().lt("updated_at", new Date(Date.now() - 30 * 86400e3).toISOString());
   return { due: jobs.length, sent };
 }
 
@@ -95,9 +96,13 @@ Deno.serve(async (req) => {
 
     const device = typeof b.device === "string" && /^[\w-]{8,64}$/.test(b.device) ? b.device : null;
     if (!device) return json({ error: "device" }, 400);
+    // Numéro d'ordre de la demande : une demande ancienne arrivée en retard ne remplace pas une plus récente.
+    // Absent (ancienne version de l'app) : la demande passe toujours.
+    const seq = Number.isSafeInteger(b.seq) && b.seq > 0 ? b.seq : null;
 
     if (b.action === "cancel") {
-      await sb.from("pomodoro_push_jobs").delete().eq("device", device);
+      const { error } = await sb.rpc("pomodoro_schedule", { p_device: device, p_seq: seq, p_sub: null, p_jobs: null });
+      if (error) throw error;
       return json({ ok: true });
     }
     if (b.action === "schedule") {
@@ -106,15 +111,11 @@ Deno.serve(async (req) => {
       const now = Date.now();
       const jobs = (Array.isArray(b.jobs) ? b.jobs : []).slice(0, 13)
         .map((j: any) => ({ t: Date.parse(j?.at), kind: j?.kind }))
-        .filter((j: any) => Number.isFinite(j.t) && j.t > now - 5000 && j.t < now + 13 * 3600e3 && j.kind in MSG);
-      await sb.from("pomodoro_push_jobs").delete().eq("device", device);
-      if (jobs.length) {
-        const { error } = await sb.from("pomodoro_push_jobs").insert(
-          jobs.map((j: any) => ({ device, subscription: sub, fire_at: new Date(j.t).toISOString(), kind: j.kind })),
-        );
-        if (error) throw error;
-      }
-      return json({ ok: true, scheduled: jobs.length });
+        .filter((j: any) => Number.isFinite(j.t) && j.t > now - 5000 && j.t < now + 13 * 3600e3 && Object.hasOwn(MSG, j.kind))
+        .map((j: any) => ({ at: new Date(j.t).toISOString(), kind: j.kind }));
+      const { data, error } = await sb.rpc("pomodoro_schedule", { p_device: device, p_seq: seq, p_sub: sub, p_jobs: jobs });
+      if (error) throw error;
+      return json({ ok: true, scheduled: data ? jobs.length : 0 });
     }
     return json({ error: "action" }, 400);
   } catch (e) {

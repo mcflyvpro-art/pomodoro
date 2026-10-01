@@ -1,5 +1,5 @@
 // Service worker : l'app fonctionne hors ligne et se met à jour en arrière-plan.
-const VERSION = 'pomodoro-v4';
+const VERSION = 'pomodoro-v5';
 const FONTS = 'pomodoro-fonts';
 const SHELL = [
   './',
@@ -42,6 +42,8 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin !== self.location.origin) return;
+  // Vidéo lue par morceaux (Range) : le cache n'y répond pas correctement sur iPhone.
+  if (req.headers.has('range') || req.destination === 'video') return;
 
   // Page : toujours la dernière version si le réseau répond vite, sinon la copie hors ligne.
   if (req.mode === 'navigate') {

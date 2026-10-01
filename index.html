@@ -318,7 +318,9 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   </section>
 
   <section class="panel" data-panel="device" hidden>
-    <div class="row" id="awakeRow"><label for="awake">Écran allumé</label><input id="awake" data-k="awake" class="switch" type="checkbox"></div>
+    <div class="sub">Écran toujours allumé (sans veille)</div>
+    <div class="chips" id="awake" data-chip="awake"></div>
+    <div class="sub"></div>
     <div class="row" id="pushRow"><label for="push">Alerte écran verrouillé</label><input id="push" class="switch" type="checkbox"></div>
     <div class="row" id="mediaRow"><label for="media">Mini-lecteur</label><input id="media" data-k="media" class="switch" type="checkbox"></div>
     <div id="installBlock" hidden>
@@ -358,6 +360,7 @@ const PALETTES = {
 };
 const PALETTE_LABEL = {safran:'Safran', corail:'Corail', foret:'Forêt', rose:'Rose', craie:'Craie', nuit:'Nuit'};
 const SOUND_LABEL = {cloche:'Cloche', gong:'Gong', bol:'Bol', bip:'Bip', oiseaux:'Oiseaux'};
+const AWAKE_LABEL = {off:'Non', run:'Pendant le décompte', always:'Toujours'};
 const AMB_LABEL = {none:'Aucune', white:'Blanc', pink:'Rose', brown:'Brun', rain:'Pluie', tick:'Tic-tac'};
 const TIPS = ['Étire-toi', "Bois un verre d'eau", 'Regarde au loin 20 secondes', 'Lève-toi et marche un peu',
   'Détends tes épaules', 'Ferme les yeux un instant', 'Respire profondément'];
@@ -365,7 +368,7 @@ const BUILTIN = [[25, 5, 15, 'Classique'], [50, 10, 20, 'Long'], [90, 20, 30, 'D
 const DEF = {work:25, short:5, long:15, every:4, auto:true, flow:false, remind:true,
   sndWork:'cloche', sndBreak:'bol', sndStart:false, vol:70, ambient:'none', ambVol:50,
   breathe:true, tips:true, palette:'safran', hideSec:false, wave:true, favProg:true,
-  awake:true, push:false, media:true, presets:[]};
+  awake:'run', push:false, media:true, presets:[]};
 const LIMITS = {work:[0.1, 600], short:[0.1, 600], long:[0.1, 600], every:[1, 20]};
 const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -390,7 +393,8 @@ const sanitize = c => ({
   breathe: bool(c.breathe, DEF.breathe), tips: bool(c.tips, DEF.tips),
   palette: oneOf(c.palette, Object.keys(PALETTES), DEF.palette),
   hideSec: bool(c.hideSec, DEF.hideSec), wave: bool(c.wave, DEF.wave), favProg: bool(c.favProg, DEF.favProg),
-  awake: bool(c.awake, DEF.awake), push: bool(c.push, DEF.push), media: bool(c.media, DEF.media),
+  awake: c.awake === true ? 'run' : c.awake === false ? 'off' : oneOf(c.awake, Object.keys(AWAKE_LABEL), DEF.awake),
+  push: bool(c.push, DEF.push), media: bool(c.media, DEF.media),
   presets: (Array.isArray(c.presets) ? c.presets : []).filter(p => Array.isArray(p) && p.length === 4).slice(0, 6)
     .map(p => [num(p[0], 0.1, 600, 25), num(p[1], 0.1, 600, 5), num(p[2], 0.1, 600, 15), Math.round(num(p[3], 1, 20, 4))]),
 });
@@ -662,33 +666,67 @@ function upcoming() {
   }
   return jobs;
 }
-function pushSync(hidden) {
+// Chaque demande porte un numéro croissant : le serveur ignore une demande plus ancienne arrivée en retard.
+let pushSeq = num(store.get('pomodoro-push-seq'), 0, Number.MAX_SAFE_INTEGER, 0), pushLast = '';
+function pushSync(hidden, force) {
   if (!cfg.push || !pushSub) return;
   const jobs = hidden ? upcoming() : [];
-  if (!jobs.length && !pushActive) return;
+  if (!jobs.length && !pushActive && !force) return;
+  // Même programme que la dernière demande (masquage puis fermeture de la page…) : rien à renvoyer.
+  const key = JSON.stringify(jobs);
+  if (key === pushLast && !force) return;
+  pushLast = key;
   pushActive = jobs.length > 0;
-  const body = jobs.length ? {action: 'schedule', device, subscription: pushSub, jobs} : {action: 'cancel', device};
+  pushSeq = Math.max(pushSeq + 1, Date.now() * 1000);
+  store.set('pomodoro-push-seq', pushSeq);
+  const body = jobs.length ? {action: 'schedule', device, seq: pushSeq, subscription: pushSub, jobs} : {action: 'cancel', device, seq: pushSeq};
   try {
     fetch(PUSH_URL, {method: 'POST', keepalive: true, headers: {'Content-Type': 'text/plain;charset=UTF-8'}, body: JSON.stringify(body)}).catch(() => {});
   } catch {}
 }
 
-/* ---------- Écran allumé pendant le décompte ---------- */
-let wakeLock = null, wakePending = false;
-function syncWakeLock() {
-  if (!('wakeLock' in navigator)) return;
-  const want = cfg.awake && running && !document.hidden;
-  if (want && !wakeLock && !wakePending) {
-    wakePending = true;
-    navigator.wakeLock.request('screen').then(l => {
-      wakePending = false;
-      if (!(cfg.awake && running)) { l.release().catch(() => {}); return; }
-      wakeLock = l;
-      l.addEventListener('release', () => { if (wakeLock === l) wakeLock = null; });
-    }).catch(() => { wakePending = false; });
-  } else if (!want && wakeLock && !document.hidden) {
-    wakeLock.release().catch(() => {}); wakeLock = null;
+/* ---------- Écran allumé : le téléphone ne se met pas en veille ---------- */
+// Verrou d'écran du navigateur quand il marche. Sinon (iPhone avant iOS 18.4 en app installée,
+// verrou refusé…) : une vidéo muette et invisible, que l'iPhone traite comme une lecture en cours.
+const iosVer = (navigator.userAgent.match(/OS (\d+)_(\d+)/) || []).slice(1).map(Number);
+const oldIOSApp = isIOS && isStandalone && iosVer.length === 2 && (iosVer[0] < 18 || (iosVer[0] === 18 && iosVer[1] < 4));
+let wakeLock = null, wakePending = false, wakeVid = null, nativeWake = 'wakeLock' in navigator && !oldIOSApp;
+const wantAwake = () => !document.hidden && (cfg.awake === 'always' || (cfg.awake === 'run' && (running || over)));
+function wakeVideo(on) {
+  if (!on) { if (wakeVid && !wakeVid.paused) wakeVid.pause(); return; }
+  if (!wakeVid) {
+    wakeVid = document.createElement('video');
+    wakeVid.muted = true; wakeVid.playsInline = true;
+    wakeVid.setAttribute('muted', ''); wakeVid.setAttribute('playsinline', ''); wakeVid.setAttribute('aria-hidden', 'true');
+    wakeVid.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+    wakeVid.src = 'media/awake.mp4';
+    // Pas d'attribut loop (l'iPhone laisserait alors l'écran s'éteindre) : on revient au début avant la fin.
+    wakeVid.addEventListener('timeupdate', () => { if (wakeVid.currentTime > 4) wakeVid.currentTime = Math.random(); });
+    document.body.appendChild(wakeVid);
   }
+  if (wakeVid.paused) wakeVid.play().catch(() => {});
+}
+function syncWakeLock() {
+  if (!wantAwake()) {
+    if (wakeLock) { const l = wakeLock; wakeLock = null; l.release().catch(() => {}); }
+    wakeVideo(false);
+    return;
+  }
+  if (!nativeWake) { wakeVideo(true); return; }
+  if (wakeLock || wakePending) return;
+  wakePending = true;
+  navigator.wakeLock.request('screen').then(l => {
+    wakePending = false;
+    if (!wantAwake()) { l.release().catch(() => {}); return; }
+    wakeLock = l;
+    wakeVideo(false);
+    // Verrou rendu par le système (appel, Siri…) : on le reprend dès que possible.
+    l.addEventListener('release', () => { if (wakeLock === l) { wakeLock = null; setTimeout(syncWakeLock, 1000); } });
+  }).catch(() => {
+    wakePending = false;
+    if (!wantAwake()) return;
+    nativeWake = false; wakeVideo(true);
+  });
 }
 
 /* ---------- Minuteur (basé sur l'heure de fin : aucune dérive, reprise après fermeture) ---------- */
@@ -979,6 +1017,7 @@ document.addEventListener('touchmove', e => { if (!e.target.closest('#drawer')) 
 // Le navigateur bloque le son tant qu'on n'a pas touché la page : on le débloque au premier geste.
 const soundBlocked = () => running && !over && (!ctx || ctx.state !== 'running');
 function unlock() {
+  syncWakeLock();
   if (!soundBlocked() && !(ctx && ctx.state !== 'running') && !(running && !over && !chime)) return;
   audio();
   if (running && !over && !chime) armChime();
@@ -1016,6 +1055,7 @@ function fillInputs() {
   renderChips($('sndWork'), SOUND_LABEL, cfg.sndWork);
   renderChips($('sndBreak'), SOUND_LABEL, cfg.sndBreak);
   renderChips($('ambient'), AMB_LABEL, cfg.ambient);
+  renderChips($('awake'), AWAKE_LABEL, cfg.awake);
   renderPresets(); renderPalettes();
 }
 function applyCfg(next) {
@@ -1040,7 +1080,7 @@ $('push').addEventListener('change', async e => {
     const ok = await enablePush();
     applyCfg({...cfg, push: ok});
   } else {
-    pushSync(false);
+    pushSync(false, true);
     applyCfg({...cfg, push: false});
   }
 });
@@ -1049,7 +1089,8 @@ document.querySelectorAll('[data-chip]').forEach(el => el.addEventListener('clic
   const k = el.dataset.chip, v = b.dataset.v;
   buzz(5);
   applyCfg({...cfg, [k]: v});
-  if (k === 'ambient') previewAmbient(); else { cancelPreview(); preview = makeSound(v, 0); armChime(); }
+  if (k === 'ambient') previewAmbient();
+  else if (k === 'sndWork' || k === 'sndBreak') { cancelPreview(); preview = makeSound(v, 0); armChime(); }
 }));
 let preview = null;
 function cancelPreview() {
@@ -1075,7 +1116,6 @@ $('palettes').addEventListener('click', e => {
   applyCfg({...cfg, palette: b.dataset.v});
 });
 $('resetCycle').addEventListener('click', () => { done = 0; setPhase('work'); });
-if (!('wakeLock' in navigator)) $('awakeRow').hidden = true;
 if (!pushSupported) $('pushRow').hidden = true;
 if (!('mediaSession' in navigator)) $('mediaRow').hidden = true;
 if (!document.fullscreenEnabled || isStandalone) $('fs').hidden = true;
@@ -1195,7 +1235,10 @@ if (!restore()) setPhase('work');
 fromUrl();
 if (cfg.push && pushSupported) {
   navigator.serviceWorker.ready.then(r => r.pushManager.getSubscription()).then(s => {
-    if (s) pushSub = s.toJSON(); else { cfg.push = false; save(); fillInputs(); }
+    if (!s) { cfg.push = false; save(); fillInputs(); return; }
+    pushSub = s.toJSON();
+    // L'app était peut-être fermée de force pendant un décompte : on remplace les alertes restées sur le serveur.
+    pushSync(document.hidden, true);
   }).catch(() => {});
 }
 requestAnimationFrame(frame);

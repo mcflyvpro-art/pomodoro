@@ -193,3 +193,94 @@ test("la mise en page tient dans l'écran", async ({ page }) => {
   expect(digits.x).toBeGreaterThanOrEqual(0);
   expect(digits.x + digits.width).toBeLessThanOrEqual(vp.width);
 });
+
+// Verrou d'écran simulé : on note chaque demande et chaque libération.
+async function fakeWakeLock(page) {
+  await page.addInitScript(() => {
+    window.__wake = { held: 0, requests: 0 };
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: {
+      request: async () => {
+        window.__wake.requests++; window.__wake.held++;
+        const l = new EventTarget();
+        l.release = async () => { window.__wake.held--; l.dispatchEvent(new Event('release')); };
+        return l;
+      },
+    } });
+  });
+}
+const wakeHeld = page => page.evaluate(() => window.__wake.held);
+
+test('écran allumé : pendant le décompte seulement', async ({ page }) => {
+  await fakeWakeLock(page);
+  await open(page);
+  await page.waitForTimeout(50);
+  expect(await wakeHeld(page)).toBe(0);
+  await toggle(page).click();
+  await expect.poll(() => wakeHeld(page)).toBe(1);
+  await toggle(page).click();
+  await expect.poll(() => wakeHeld(page)).toBe(0);
+});
+
+test('écran allumé : toujours, même minuteur arrêté', async ({ page }) => {
+  await fakeWakeLock(page);
+  await open(page, { cfg: { awake: true } });
+  await page.locator('#openSettings').click();
+  await page.locator('[data-tab=device]').click();
+  await expect(page.locator('#awake .chip.on')).toHaveText('Pendant le décompte');
+  await page.locator('#awake .chip[data-v=always]').click();
+  await expect.poll(() => wakeHeld(page)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pomodoro')).awake)).toBe('always');
+  await page.locator('#awake .chip[data-v=off]').click();
+  await expect.poll(() => wakeHeld(page)).toBe(0);
+});
+
+test('écran allumé : vidéo muette de secours si le verrou est refusé', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: { request: () => Promise.reject(new Error('refusé')) } });
+    HTMLMediaElement.prototype.play = function () { window.__played = this.currentSrc || this.src; return Promise.resolve(); };
+  });
+  await open(page, { cfg: { awake: 'always' } });
+  await expect.poll(() => page.evaluate(() => window.__played || '')).toMatch(/media\/awake\.mp4$/);
+  const v = page.locator('video');
+  expect(await v.evaluate(el => [el.muted, el.loop, el.playsInline])).toEqual([true, false, true]);
+});
+
+// Alertes écran verrouillé : abonnement push simulé, requêtes vers le serveur enregistrées.
+async function fakePush(page) {
+  const calls = [];
+  await page.route(/functions\/v1\/pomodoro-push/, async r => {
+    if (r.request().method() === 'POST') calls.push(JSON.parse(r.request().postData()));
+    await r.fulfill({ status: 200, body: '{"ok":true}' });
+  });
+  await page.addInitScript(() => {
+    window.__hidden = false;
+    Object.defineProperty(Document.prototype, 'hidden', { configurable: true, get: () => window.__hidden });
+    Object.defineProperty(Document.prototype, 'visibilityState', { configurable: true, get: () => window.__hidden ? 'hidden' : 'visible' });
+    const sub = { toJSON: () => ({ endpoint: 'https://web.push.apple.com/test', keys: { p256dh: 'p', auth: 'a' } }) };
+    const reg = { pushManager: { getSubscription: async () => sub }, showNotification: async () => {} };
+    Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { configurable: true, get: () => Promise.resolve(reg) });
+  });
+  return calls;
+}
+const setHidden = (page, h) => page.evaluate(h => { window.__hidden = h; document.dispatchEvent(new Event('visibilitychange')); }, h);
+
+test("alertes : nettoyées à l'ouverture, envoyées une seule fois, dans l'ordre", async ({ page }) => {
+  const calls = await fakePush(page);
+  await open(page, { cfg: { push: true, work: 1, short: 1 } });
+  // À l'ouverture : on retire les alertes laissées par une app fermée de force.
+  await expect.poll(() => calls.length).toBe(1);
+  expect(calls[0]).toMatchObject({ action: 'cancel' });
+  await toggle(page).click();
+  await setHidden(page, true);
+  await page.evaluate(() => dispatchEvent(new Event('pagehide')));
+  await expect.poll(() => calls.length).toBe(2);
+  expect(calls[1].action).toBe('schedule');
+  expect(calls[1].jobs[0].kind).toBe('work');
+  await setHidden(page, false);
+  await expect.poll(() => calls.length).toBe(3);
+  expect(calls[2].action).toBe('cancel');
+  const seqs = calls.map(c => c.seq);
+  expect(seqs.every(Number.isSafeInteger)).toBe(true);
+  expect([...seqs].sort((a, b) => a - b)).toEqual(seqs);
+  expect(new Set(seqs).size).toBe(seqs.length);
+});
