@@ -125,6 +125,19 @@ test('mode flow : le Focus continue au-delà de la fin', async ({ page }) => {
   await expect(phaseOn(page)).toHaveText('Pause courte');
 });
 
+test('mini-lecteur : piste silencieuse et infos de lecture pendant tout le décompte', async ({ page }) => {
+  await open(page, { cfg: { work: 1, media: true } });
+  await toggle(page).click();
+  const media = () => page.evaluate(() => ({ title: navigator.mediaSession.metadata?.title, state: navigator.mediaSession.playbackState }));
+  await expect.poll(async () => (await media()).title).toMatch(/^Focus · fin à \d\d:\d\d$/);
+  expect((await media()).state).toBe('playing');
+  await later(page, 61_000);
+  await expect.poll(async () => (await media()).title).toMatch(/^Pause courte · fin à/);
+  await toggle(page).click();
+  await expect.poll(async () => (await media()).title).toBe('Pause courte en pause');
+  expect((await media()).state).toBe('paused');
+});
+
 test('masquer les secondes', async ({ page }) => {
   await open(page, { cfg: { hideSec: true } });
   await expect(time(page)).toHaveText('25');

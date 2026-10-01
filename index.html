@@ -320,7 +320,7 @@ kbd{font:600 12px/1 var(--ui);padding:5px 8px;border-radius:7px;background:color
   <section class="panel" data-panel="device" hidden>
     <div class="row" id="awakeRow"><label for="awake">Écran allumé</label><input id="awake" data-k="awake" class="switch" type="checkbox"></div>
     <div class="row" id="pushRow"><label for="push">Alerte écran verrouillé</label><input id="push" class="switch" type="checkbox"></div>
-    <div class="row" id="mediaRow"><label for="media">Contrôles écran verrouillé</label><input id="media" data-k="media" class="switch" type="checkbox"></div>
+    <div class="row" id="mediaRow"><label for="media">Mini-lecteur</label><input id="media" data-k="media" class="switch" type="checkbox"></div>
     <div id="installBlock" hidden>
       <button class="btn primary" id="installBtn" hidden>Installer l'app</button>
       <p class="ios" id="iosHint" hidden>Installer : touche
@@ -493,7 +493,7 @@ amb.loop = true; amb.preload = 'auto';
 let ambKey = '', ambUrl = '', ambPreviewT = 0;
 function makeWav(kind, vol) {
   const sr = 22050, gain = (vol / 100) ** 2 * .9;
-  const loop = kind === 'tick' ? sr : sr * 8, F = kind === 'tick' ? 0 : sr >> 1;
+  const loop = kind === 'tick' ? sr : kind === 'silent' ? sr * 2 : sr * 8, F = kind === 'tick' ? 0 : sr >> 1;
   const a = new Float32Array(loop + F);
   let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, last = 0, env = 0;
   for (let i = 0; i < a.length; i++) {
@@ -506,6 +506,8 @@ function makeWav(kind, vol) {
       b3 = .8665 * b3 + w * .3104856; b4 = .55 * b4 + w * .5329522; b5 = -.7616 * b5 - w * .016898;
       v = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * .5362) * .09; b6 = w * .115926;
       if (kind === 'rain') { if (Math.random() < .0007) env = .3 + Math.random() * .5; v = v * .7 + w * env * .35; env *= .996; }
+    } else if (kind === 'silent') {
+      v = w * .00005; // inaudible, mais le système voit une lecture en cours
     } else if (kind === 'tick') {
       if (i % (sr / 2) === 0) env = i < sr / 2 ? .55 : .38;
       v = w * env; env *= .97;
@@ -521,50 +523,75 @@ function makeWav(kind, vol) {
   for (let i = 0; i < loop; i++) d.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a[i] * gain)) * 32767, true);
   return URL.createObjectURL(new Blob([buf], {type: 'audio/wav'}));
 }
-function loadAmbient() {
-  const key = cfg.ambient + ':' + cfg.ambVol;
+// Ce que le lecteur doit jouer : l'ambiance pendant le Focus, sinon une piste silencieuse
+// pour que l'iPhone affiche le mini-lecteur (Centre de contrôle, écran verrouillé, Dynamic Island).
+function wantedAudio() {
+  if (!running) return null;
+  if (phase === 'work' && cfg.ambient !== 'none') return cfg.ambient + ':' + cfg.ambVol;
+  if (cfg.media && 'mediaSession' in navigator) return 'silent';
+  return null;
+}
+function loadAudio(key) {
   if (key === ambKey) return;
   const old = ambUrl;
-  ambUrl = makeWav(cfg.ambient, cfg.ambVol); ambKey = key;
+  const [kind, vol] = key === 'silent' ? ['silent', 100] : key.split(':');
+  ambUrl = makeWav(kind, Number(vol)); ambKey = key;
   amb.src = ambUrl;
   if (old) URL.revokeObjectURL(old);
 }
-const ambientWanted = () => cfg.ambient !== 'none' && running && phase === 'work';
 function syncAmbient() {
-  if (ambientWanted()) {
+  const key = wantedAudio();
+  if (key) {
     clearTimeout(ambPreviewT); ambPreviewT = 0;
-    loadAmbient();
+    loadAudio(key);
     if (amb.paused) amb.play().catch(() => {});
   } else if (!amb.paused && !ambPreviewT) amb.pause();
 }
 function previewAmbient() {
   if (cfg.ambient === 'none') { clearTimeout(ambPreviewT); ambPreviewT = 0; syncAmbient(); return; }
-  loadAmbient();
-  if (ambientWanted()) return;
+  const key = cfg.ambient + ':' + cfg.ambVol;
+  if (wantedAudio() === key) return;
+  loadAudio(key);
   amb.play().catch(() => {});
   clearTimeout(ambPreviewT);
   ambPreviewT = setTimeout(() => { ambPreviewT = 0; syncAmbient(); }, 2500);
 }
 
-/* ---------- Contrôles sur l'écran verrouillé (Media Session) ---------- */
+/* ---------- Mini-lecteur : Centre de contrôle, écran verrouillé, Dynamic Island (Media Session) ---------- */
+let mediaKey = '';
 function syncMedia() {
   const ms = navigator.mediaSession; if (!ms) return;
   try {
-    const on = cfg.media && cfg.ambient !== 'none' && phase === 'work' && (running || left < total);
-    if (!on) { ms.metadata = null; ms.playbackState = 'none'; return; }
-    ms.metadata = new MediaMetadata({
-      title: over ? 'Focus · en flow' : running ? `Focus · fin à ${clock(endAt)}` : 'Focus en pause',
-      artist: 'Pomodoro',
-      artwork: [{src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png'}],
-    });
+    const on = (cfg.media || (cfg.ambient !== 'none' && phase === 'work')) && (running || over || left < total);
+    if (!on) {
+      if (mediaKey) { ms.metadata = null; ms.playbackState = 'none'; mediaKey = ''; }
+      return;
+    }
+    const title = over ? 'Focus · en flow' : running ? `${LABEL[phase]} · fin à ${clock(endAt)}` : `${LABEL[phase]} en pause`;
+    const key = title + cfg.palette + phase;
+    if (key !== mediaKey) {
+      ms.metadata = new MediaMetadata({
+        title, artist: 'Pomodoro', album: `${done} session${done > 1 ? 's' : ''} aujourd'hui`,
+        artwork: [{src: new URL('icons/icon-512.png', location.href).href, sizes: '512x512', type: 'image/png'}],
+      });
+      mediaKey = key;
+    }
     ms.playbackState = running ? 'playing' : 'paused';
-    if (running && !over) ms.setPositionState({duration: total / 1000, playbackRate: 1, position: Math.max(0, Math.min(total, total - (endAt - Date.now()))) / 1000});
+    if (!over && total) {
+      const pos = running ? total - (endAt - Date.now()) : total - left;
+      ms.setPositionState({duration: total / 1000, playbackRate: 1, position: Math.max(0, Math.min(total, pos)) / 1000});
+    }
   } catch {}
 }
 try {
-  navigator.mediaSession?.setActionHandler('play', () => { if (!running) start(true); });
-  navigator.mediaSession?.setActionHandler('pause', () => { if (running && !over) pause(); });
-  navigator.mediaSession?.setActionHandler('nexttrack', () => skip());
+  const ms = navigator.mediaSession;
+  ms?.setActionHandler('play', () => { if (!running && !over) start(true); });
+  ms?.setActionHandler('pause', () => { if (over) endFlow(); else if (running) pause(); });
+  ms?.setActionHandler('nexttrack', () => skip());
+  ms?.setActionHandler('previoustrack', () => reset());
+  // Sans avance/recul rapide, l'iPhone affiche les boutons « précédent / suivant ».
+  ms?.setActionHandler('seekbackward', null);
+  ms?.setActionHandler('seekforward', null);
 } catch {}
 
 /* ---------- PWA : service worker, notifications, installation ---------- */
