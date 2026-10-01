@@ -1,5 +1,5 @@
 // Service worker : l'app fonctionne hors ligne et se met à jour en arrière-plan.
-const VERSION = 'pomodoro-v2';
+const VERSION = 'pomodoro-v3';
 const FONTS = 'pomodoro-fonts';
 const SHELL = [
   './',

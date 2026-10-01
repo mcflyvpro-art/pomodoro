@@ -39,7 +39,16 @@ button{cursor:pointer;border:0;background:none;padding:0}
 :focus{outline:none}
 :focus-visible{outline:2px solid var(--field);outline-offset:3px;border-radius:8px}
 
-#app{position:fixed;top:0;left:0;right:0;height:var(--app-h,100%);overflow:hidden}
+#app{position:fixed;inset:0;overflow:hidden}
+/* iOS 26, app installée : 100%, dvh et svh sont trop courts de la hauteur de la barre d'état
+   (bande vide en bas). Seul lvh donne la vraie hauteur, et le contenu fixe est coupé :
+   on passe donc en flux normal sur une page de 100lvh. */
+@media (display-mode: standalone), (display-mode: fullscreen){
+  :root{--vh:1lvh}
+  html{height:100lvh;position:relative}
+  body{position:relative;inset:auto;height:100%}
+  #app{position:absolute;inset:0}
+}
 
 /* ---------- Le cadran plein écran : deux calques identiques, l'un découpé ---------- */
 .layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -269,21 +278,6 @@ const isStandalone = matchMedia('(display-mode: standalone)').matches || navigat
 const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const mobile = matchMedia('(max-width:640px)');
 
-// iOS, app installée : la fenêtre déclarée est plus courte que l'écran (bande vide en bas).
-// On s'aligne sur la vraie hauteur de l'écran.
-function fitScreen() {
-  let h = innerHeight;
-  if (isStandalone && /iphone|ipod/i.test(navigator.userAgent)) {
-    const portrait = matchMedia('(orientation: portrait)').matches;
-    const sh = portrait ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-    h = Math.max(h, sh);
-  }
-  document.documentElement.style.setProperty('--app-h', h + 'px');
-  document.documentElement.style.setProperty('--vh', h / 100 + 'px');
-}
-fitScreen();
-addEventListener('resize', fitScreen);
-addEventListener('orientationchange', () => setTimeout(fitScreen, 300));
 
 const num = (v, min, max, d) => { v = Number(v); return Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d; };
 const bool = (v, d) => typeof v === 'boolean' ? v : d;
@@ -532,6 +526,7 @@ function armIdle() {
   }, mobile.matches ? 4000 : 3000);
 }
 ['mousemove', 'mousedown', 'touchstart'].forEach(ev => document.addEventListener(ev, wake, {passive:true}));
+document.addEventListener('touchmove', e => { if (!e.target.closest('#drawer')) e.preventDefault(); }, {passive:false});
 
 /* ---------- Réglages ---------- */
 function fillInputs() {
